@@ -90,7 +90,7 @@ parsed documents forward.
 OntoBricks follows a 3-step workflow:
 
 ```
-1. Design Ontology → 2. Assign Data Sources → 3. Knowledge Graph (Sync & Explore)
+1. Design Ontology → 2. Assign Data Assets → 3. Knowledge Graph (Sync & Explore)
 ```
 
 ### Settings page navigation behavior
@@ -529,7 +529,7 @@ Open **Studio** and click **Export** (top right) to download the generated OWL i
 
 ---
 
-## Step 2: Map Data Sources (Mapping)
+## Step 2: Map Data Assets (Mapping)
 
 Navigate to the **Mapping** page by clicking "Mapping" in the navigation bar.
 
@@ -2025,9 +2025,9 @@ registry automatically before reporting success.
 
 #### Removing data sources
 
-Removing a table (**Remove Tables**, or **Clear Data Sources** for all of them)
+Removing a table (**Remove Tables**, or **Clear Data Assets** for all of them)
 is checked against the mappings first. If any entity or relationship still reads
-from a table you are about to remove, a **Data Sources Still In Use** dialog
+from a table you are about to remove, a **Data Assets Still In Use** dialog
 lists each affected table together with the mappings that reference it — for
 example `Entity: Customer` or `Rel: buys (source)`. References buried inside a
 mapping's custom SQL are detected too.

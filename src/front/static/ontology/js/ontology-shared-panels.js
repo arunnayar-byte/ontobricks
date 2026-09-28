@@ -678,7 +678,7 @@ async function renderEntityForm(panel, cls, viewOnly = false) {
             <div class="form-tab-pane ${_eTab === 'attributes' ? 'active' : ''}" data-form-tab-content="attributes">
                 <div class="d-flex justify-content-end gap-1 mb-2">
                     ${!viewOnly ? `
-                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="openMetadataAttributePicker()" title="Add from data sources"><i class="bi bi-database"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="openMetadataAttributePicker()" title="Add from data assets"><i class="bi bi-database"></i></button>
                         <button type="button" class="btn btn-sm btn-outline-primary py-0 px-1" onclick="addSharedEntityAttribute()" title="Add manually"><i class="bi bi-plus"></i></button>
                     ` : ''}
                 </div>
@@ -1075,7 +1075,7 @@ function renderSharedEntityDataset(viewOnly = false) {
                    <button type="button"
                            class="btn btn-sm btn-outline-secondary py-0 px-1"
                            id="datasetDescriptionFromUcBtn"
-                           title="Fill from Data Sources table description"
+                           title="Fill from Data Assets table description"
                            onclick="loadDatasetDescriptionFromDataSource()">
                      <i class="bi bi-database-down"></i>
                    </button>
@@ -1223,7 +1223,7 @@ async function loadDatasetDescriptionFromDataSource() {
         const data = await resp.json();
         if (!_isCurrentDataset(datasetKey)) return;
         if (!data.success || !data.has_metadata || !data.metadata?.tables?.length) {
-            showNotification('No Data Sources loaded for this domain', 'info', 3000);
+            showNotification('No Data Assets loaded for this domain', 'info', 3000);
             return;
         }
         const match = data.metadata.tables.find(table => {
@@ -1234,22 +1234,22 @@ async function loadDatasetDescriptionFromDataSource() {
                 || shortName === String(sharedPanelDataset.asset || '').toLowerCase();
         });
         if (!match) {
-            showNotification('Dataset not found in Data Sources', 'info', 3000);
+            showNotification('Dataset not found in Data Assets', 'info', 3000);
             return;
         }
         const comment = String(match.comment || match.description || '').trim();
         if (!comment) {
-            showNotification('No table description in Data Sources for this dataset', 'info', 3000);
+            showNotification('No table description in Data Assets for this dataset', 'info', 3000);
             return;
         }
         onDatasetDescriptionChange(comment);
         const input = panelGetById('datasetDescriptionInput');
         if (input) input.value = comment;
-        showNotification('Description loaded from Data Sources', 'success', 2500);
+        showNotification('Description loaded from Data Assets', 'success', 2500);
     } catch (err) {
-        console.error('[Dataset] Error loading Data Sources description:', err);
+        console.error('[Dataset] Error loading Data Assets description:', err);
         if (_isCurrentDataset(datasetKey)) {
-            showNotification('Failed to load Data Sources description', 'danger', 3000);
+            showNotification('Failed to load Data Assets description', 'danger', 3000);
         }
     } finally {
         if (btn && _isCurrentDataset(datasetKey)) {
@@ -3680,7 +3680,7 @@ async function openMetadataAttributePicker() {
     document.getElementById('metaAttrFooter').style.display = 'none';
     
     const tableList = document.getElementById('metaAttrTableList');
-    tableList.innerHTML = '<div class="text-muted small p-2"><i class="bi bi-hourglass-split me-1"></i>Loading data sources...</div>';
+    tableList.innerHTML = '<div class="text-muted small p-2"><i class="bi bi-hourglass-split me-1"></i>Loading data assets...</div>';
     
     metaAttrPickerModal.show();
     
@@ -3689,7 +3689,7 @@ async function openMetadataAttributePicker() {
         const data = await response.json();
         
         if (!data.success || !data.has_metadata || !data.metadata?.tables?.length) {
-            tableList.innerHTML = '<div class="text-muted small p-2"><i class="bi bi-exclamation-circle me-1"></i>No data sources loaded. Load data sources in Domain settings first.</div>';
+            tableList.innerHTML = '<div class="text-muted small p-2"><i class="bi bi-exclamation-circle me-1"></i>No data assets loaded. Load data assets in Domain settings first.</div>';
             return;
         }
         
@@ -3888,7 +3888,7 @@ function metaAttrApplySelection() {
     }
     
     if (addedCount > 0) {
-        showNotification(`Added ${addedCount} attribute(s) from data sources`, 'success', 2000);
+        showNotification(`Added ${addedCount} attribute(s) from data assets`, 'success', 2000);
     } else {
         showNotification('All selected columns already exist as attributes', 'info', 2000);
     }

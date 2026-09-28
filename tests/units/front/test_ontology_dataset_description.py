@@ -49,4 +49,4 @@ def test_description_has_right_aligned_uc_metadata_button():
     body = source[start : start + 2200]
     assert "match.comment || match.description" in body
     assert "onDatasetDescriptionChange" in body or "sharedPanelDataset.description" in body
-    assert "Data Sources" in body
+    assert "Data Assets" in body

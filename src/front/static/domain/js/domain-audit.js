@@ -56,7 +56,7 @@
         ontology_reset: { icon: 'arrow-counterclockwise', cls: 'text-warning', label: 'Ontology reset' },
         mapping_reset: { icon: 'trash', cls: 'text-danger', label: 'Mappings reset' },
         agent_auto_map_run: { icon: 'robot', cls: 'text-info', label: 'Auto-mapping agent run' },
-        metadata_table_removed: { icon: 'trash', cls: 'text-danger', label: 'Data source removed' },
+        metadata_table_removed: { icon: 'trash', cls: 'text-danger', label: 'Data asset removed' },
     };
 
     // Terminal statuses of an agent run -> chip styling.

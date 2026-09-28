@@ -91,7 +91,7 @@ foaf:gender a rdfs:Property .
    Catalog: main
    Schema: default
    ```
-3. Click "Load Tables"
+3. Click "Add assets"
 4. You should see `person` in the table list
 
 #### Step 3: Create Entity Mapping
@@ -505,7 +505,7 @@ Click **Auto Layout** to organize the diagram, then **Center** to fit the view.
 
 ---
 
-### Step 2: Map Data Sources
+### Step 2: Map Data Assets
 
 #### Entity Mappings
 

@@ -279,9 +279,9 @@ Alternatively, use the traditional form interface:
 2. Click **Validate** to check your ontology
 3. Click **Save** to store in Unity Catalog
 
-### 5. Assign Data Sources
+### 5. Assign Data Assets
 
-Load Unity Catalog tables from **Domain → Data Sources → Add Data Source**
+Load Unity Catalog tables from **Domain → Data Assets → Add Data Asset**
 (catalog and schema picker). Editors and Builders can do this with `CAN_USE`;
 they do not need `CAN_MANAGE`. Viewers cannot import or remove sources.
 

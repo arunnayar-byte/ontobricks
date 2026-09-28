@@ -55,3 +55,94 @@ Modified files:
 - docs/user-guide.md
 
 Tests: `uv run --frozen pytest -q -m "not scenario"` → 7098 passed, 315 skipped, 6 deselected, 1 xfailed in 65.70s
+
+## Rename Data Sources confirm button to Add assets
+
+Context: Domain → Data Sources catalog/schema popup still labelled the confirm
+action as tables-only. Sources now include tables, views, and metric views, so
+the CTA is Add assets.
+
+Changes:
+
+1. `src/front/templates/partials/domain/_domain_metadata.html`
+   Location modal confirm button: Add assets.
+2. `src/front/static/domain/js/domain-metadata.js`
+   Import-picker confirm counts assets, not tables.
+3. `tests/units/front/test_mapping_metric_view_ui.py`
+   Contract for both labels.
+4. `docs/examples.md`
+   Walkthrough click target updated.
+
+Modified files:
+- src/front/templates/partials/domain/_domain_metadata.html
+- src/front/static/domain/js/domain-metadata.js
+- tests/units/front/test_mapping_metric_view_ui.py
+- docs/examples.md
+
+Tests: `uv run --frozen pytest -q -m "not scenario"` → 7100 passed, 315 skipped, 6 deselected, 1 xfailed in 62.01s
+
+## Rename "Data Sources" UI labels to "Data Assets"
+
+Context: Domain sources now cover tables, views and UC metric views, so the
+"Data Sources" wording was too narrow. Every user-facing label, toast, dialog,
+help text and menu entry now says "Data Assets" / "data assets". Code
+identifiers, comments, routes and API/MCP descriptions are unchanged.
+
+Changes:
+
+1. `src/front/config/menu_config.json`
+   Domain sidebar entry: Data Assets.
+2. `src/front/templates/partials/domain/_domain_metadata.html`,
+   `src/front/templates/partials/domain/_domain_validation.html`,
+   `src/front/templates/partials/mapping/_mapping_information.html`,
+   `src/front/templates/partials/ontology/_ontology_wizard.html`,
+   `src/front/templates/partials/dtwin/_query_api.html`,
+   `src/front/templates/partials/layout/help_modal.html`
+   Headers, buttons, modals, tiles and help copy renamed.
+3. `src/front/static/domain/js/domain-metadata.js`,
+   `src/front/static/domain/js/domain-audit.js`,
+   `src/front/static/ontology/js/ontology-shared-panels.js`,
+   `src/front/static/ontology/js/ontology-wizard.js`,
+   `src/front/static/mapping/js/mapping-shared.js`,
+   `src/front/static/mapping/js/mapping-autoassign.js`,
+   `src/front/static/global/js/mapping-information.js`
+   Toasts, dialogs, status and empty-state strings renamed.
+4. `src/back/objects/domain/Domain.py`
+   Audit summary and change-location message say data asset(s).
+5. `tests/units/front/test_mapping_metric_view_ui.py`
+   Guard: no non-comment "data source" label left under src/front.
+6. `tests/units/front/test_metadata_guard_ui.py`,
+   `tests/units/front/test_ontology_dataset_description.py`
+   Assertions follow the new labels.
+7. `docs/get-started.md`, `docs/user-guide.md`, `docs/deployment.md`,
+   `docs/INFO.md`, `docs/data-access.md`, `docs/examples.md`, `docs/api.md`
+   UI label references updated.
+
+Modified files:
+- src/front/config/menu_config.json
+- src/front/templates/partials/domain/_domain_metadata.html
+- src/front/templates/partials/domain/_domain_validation.html
+- src/front/templates/partials/mapping/_mapping_information.html
+- src/front/templates/partials/ontology/_ontology_wizard.html
+- src/front/templates/partials/dtwin/_query_api.html
+- src/front/templates/partials/layout/help_modal.html
+- src/front/static/domain/js/domain-metadata.js
+- src/front/static/domain/js/domain-audit.js
+- src/front/static/ontology/js/ontology-shared-panels.js
+- src/front/static/ontology/js/ontology-wizard.js
+- src/front/static/mapping/js/mapping-shared.js
+- src/front/static/mapping/js/mapping-autoassign.js
+- src/front/static/global/js/mapping-information.js
+- src/back/objects/domain/Domain.py
+- tests/units/front/test_mapping_metric_view_ui.py
+- tests/units/front/test_metadata_guard_ui.py
+- tests/units/front/test_ontology_dataset_description.py
+- docs/get-started.md
+- docs/user-guide.md
+- docs/deployment.md
+- docs/INFO.md
+- docs/data-access.md
+- docs/examples.md
+- docs/api.md
+
+Tests: `uv run --frozen pytest -q -m "not scenario"` → 7101 passed, 315 skipped, 6 deselected, 1 xfailed in 52.54s

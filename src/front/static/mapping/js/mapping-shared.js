@@ -180,7 +180,7 @@ class SQLWizardBase {
             }
         } catch (e) {
             console.error('[SQLWizard] Error loading metadata:', e);
-            if (tableListEl) tableListEl.innerHTML = '<div class="text-danger small p-2">Error loading data sources</div>';
+            if (tableListEl) tableListEl.innerHTML = '<div class="text-danger small p-2">Error loading data assets</div>';
         }
         
         this.updateGenerateButton();
@@ -191,7 +191,7 @@ class SQLWizardBase {
         if (!tableListEl) return;
         
         if (tables.length === 0) {
-            tableListEl.innerHTML = '<div class="text-muted small p-2">No tables in data sources</div>';
+            tableListEl.innerHTML = '<div class="text-muted small p-2">No tables in data assets</div>';
             return;
         }
         

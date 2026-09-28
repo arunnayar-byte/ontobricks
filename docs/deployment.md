@@ -971,7 +971,7 @@ Prefer the explicit list above for a production workspace because `ALL PRIVILEGE
 
 ### 3.3 — Source data grants (customer tables/views)
 
-For every table or view referenced in an R2RML mapping (i.e. anything that appears in the **Data Sources** tab of a domain), the app SP needs to read the data:
+For every table or view referenced in an R2RML mapping (i.e. anything that appears in the **Data Assets** tab of a domain), the app SP needs to read the data:
 
 ```sql
 GRANT USE CATALOG ON CATALOG `<source_catalog>`                               TO `<app-sp>`;
@@ -1064,7 +1064,7 @@ OntoBricks includes a built-in permission system that controls who can access th
 When no permissions are configured yet, only users with **CAN_MANAGE** on the Databricks App have access. Everyone else is blocked until an admin adds them via the Permissions tab.
 
 Editors and Builders can browse Unity Catalog catalogs and schemas from the
-domain's **Data Sources** panel and can import, update, or remove its tables.
+domain's **Data Assets** panel and can import, update, or remove its tables.
 They do not need `CAN_MANAGE` for these domain operations. Shared application
 configuration, including SQL Warehouse selection, remains admin-only.
 

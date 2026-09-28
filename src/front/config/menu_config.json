@@ -81,7 +81,7 @@
                     "items": [
                         {
                             "id": "metadata",
-                            "label": "Data Sources",
+                            "label": "Data Assets",
                             "icon": "bi-database",
                             "default": false,
                             "requires": "domain_saved"

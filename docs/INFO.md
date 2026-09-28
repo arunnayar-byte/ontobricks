@@ -275,9 +275,9 @@ Select the domains you need, click **Import**, and OntoBricks fetches, merges, a
 
 See **[Ontology import](docs/user-guide.md#ontology-import-merged)** in the user guide for details on each standard and available domains.
 
-### 2. 🔗 Assign Data Sources
+### 2. 🔗 Assign Data Assets
 
-Import Unity Catalog tables from **Domain → Data Sources** (**Add Data Source**).
+Import Unity Catalog tables from **Domain → Data Assets** (**Add Data Asset**).
 Editors and Builders can do this with `CAN_USE`; `CAN_MANAGE` is not required.
 Then connect those tables to the ontology on the **Mapping** page:
 

@@ -41,12 +41,12 @@ async function updateMetadataStatus() {
         } else {
             prereqAlert.className = 'alert alert-warning';
             checkIcon.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i>';
-            checkStatus.innerHTML = '<strong>No data sources loaded</strong> — Data sources are required before creating mappings. Please load data sources first.';
+            checkStatus.innerHTML = '<strong>No data assets loaded</strong> — Data assets are required before creating mappings. Please load data assets first.';
         }
     } catch (e) {
         prereqAlert.className = 'alert alert-danger';
         checkIcon.innerHTML = '<i class="bi bi-x-circle-fill me-2"></i>';
-        checkStatus.textContent = 'Error checking data sources status';
+        checkStatus.textContent = 'Error checking data assets status';
     }
 }
 

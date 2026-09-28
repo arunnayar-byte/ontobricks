@@ -147,7 +147,7 @@ async function loadMetadataStatus() {
     const previewDiv = document.getElementById('metadataPreview');
     
     statusDiv.className = 'alert alert-secondary mb-4';
-    statusText.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Loading data sources…';
+    statusText.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Loading data assets…';
     
     try {
         const response = await fetch('/domain/metadata', { credentials: 'same-origin' });
@@ -169,7 +169,7 @@ async function loadMetadataStatus() {
             
             statusDiv.className = 'alert alert-success mb-4';
             statusText.innerHTML = `
-                <strong>Data sources loaded:</strong> 
+                <strong>Data assets loaded:</strong> 
                 ${locationDisplay ? `<strong>${locationDisplay}</strong> - ` : ''}
                 ${tableCount} table${tableCount !== 1 ? 's' : ''}
             `;
@@ -190,7 +190,7 @@ async function loadMetadataStatus() {
             metadataCache = null;
             tableSelections = {};
             statusDiv.className = 'alert alert-secondary mb-4';
-            statusText.innerHTML = '<i class="bi bi-info-circle"></i> No data sources loaded';
+            statusText.innerHTML = '<i class="bi bi-info-circle"></i> No data assets loaded';
             previewDiv.classList.add('d-none');
             const warningEl = document.getElementById('metadataDescriptionWarning');
             if (warningEl) warningEl.style.display = 'none';
@@ -200,7 +200,7 @@ async function loadMetadataStatus() {
     } catch (error) {
         console.error('Error loading metadata status:', error);
         statusDiv.className = 'alert alert-warning mb-4';
-        statusText.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Error loading data sources status';
+        statusText.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Error loading data assets status';
     }
 }
 
@@ -432,7 +432,7 @@ function updateImportSelectionCount() {
     
     if (importBtn) {
         importBtn.disabled = selectedCount === 0;
-        importBtn.innerHTML = `<i class="bi bi-download"></i> Import ${selectedCount} Table${selectedCount !== 1 ? 's' : ''}`;
+        importBtn.innerHTML = `<i class="bi bi-download"></i> Add ${selectedCount} asset${selectedCount !== 1 ? 's' : ''}`;
     }
 }
 
@@ -474,7 +474,7 @@ async function importSelectedTables() {
     
     loadBtn.disabled = true;
     progressDiv.classList.remove('d-none');
-    statusSpan.textContent = `Loading data sources for ${selectedTables.length} table(s)...`;
+    statusSpan.textContent = `Loading data assets for ${selectedTables.length} table(s)...`;
     
     try {
         // Start async task
@@ -501,7 +501,7 @@ async function importSelectedTables() {
         const taskId = startResult.task_id;
         sessionStorage.setItem(METADATA_LOAD_TASK_KEY, taskId);
         
-        showNotification('Data sources loading started...', 'info');
+        showNotification('Data assets loading started...', 'info');
         
         // Trigger refresh of task tracker
         if (typeof refreshTasks === 'function') refreshTasks();
@@ -658,7 +658,7 @@ async function monitorMetadataTask(taskId, taskType, btn, progressDiv, statusSpa
                     }
                 }
                 
-                showNotification(task.message || 'Data sources operation completed!', 'success');
+                showNotification(task.message || 'Data assets operation completed!', 'success');
                 
                 // Refresh metadata display
                 await loadMetadataStatus();
@@ -738,7 +738,7 @@ function displayMetadataPreview(metadata) {
                     <strong>${displayName}</strong>
                     ${objectKindMeta(table.object_kind).badge}
                 </td>
-                <td class="meta-cursor-pointer" data-meta-action="open-ds-modal" data-table-index="${index}" title="Click to change data source">
+                <td class="meta-cursor-pointer" data-meta-action="open-ds-modal" data-table-index="${index}" title="Click to change data asset">
                     ${dataSource
                         ? `<code>${dataSource}</code>`
                         : '<span class="text-muted fst-italic">Click to set...</span>'}
@@ -906,7 +906,7 @@ async function confirmRemovalWithImpact(identifiers, plain) {
     const mappingCount = new Set(Object.values(impact).flat()).size;
     return showConfirmDialog({
         ...plain,
-        title: 'Data Sources Still In Use',
+        title: 'Data Assets Still In Use',
         size: 'modal-lg',
         headerClass: 'bg-danger text-white',
         icon: 'exclamation-triangle',
@@ -914,7 +914,7 @@ async function confirmRemovalWithImpact(identifiers, plain) {
             ${plain.message}
             <div class="alert alert-danger mt-3 mb-0">
                 <i class="bi bi-exclamation-triangle me-2"></i>
-                <strong>Warning:</strong> ${affectedTables} of these data source(s)
+                <strong>Warning:</strong> ${affectedTables} of these data asset(s)
                 are still mapped by ${mappingCount} entity/relationship mapping(s).
                 Removing them leaves those mappings pointing at a missing table,
                 which will fail at build time. Generated R2RML/SQL will be cleared.
@@ -927,7 +927,7 @@ async function confirmRemovalWithImpact(identifiers, plain) {
 
 async function removeSelectedTables() {
     if (!metadataCache) {
-        showNotification('No data sources loaded', 'warning');
+        showNotification('No data assets loaded', 'warning');
         return;
     }
     
@@ -951,10 +951,10 @@ async function removeSelectedTables() {
     const confirmed = await confirmRemovalWithImpact(
         tablesToRemove.map(t => t.full_name || t.name),
         {
-            title: isRemovingAll ? 'Clear All Data Sources' : 'Remove Tables',
+            title: isRemovingAll ? 'Clear All Data Assets' : 'Remove Tables',
             message: isRemovingAll
-                ? 'Are you sure you want to remove all tables? This will clear the data sources.'
-                : `Are you sure you want to remove ${toRemoveCount} table${toRemoveCount !== 1 ? 's' : ''} from the data sources?`,
+                ? 'Are you sure you want to remove all tables? This will clear the data assets.'
+                : `Are you sure you want to remove ${toRemoveCount} table${toRemoveCount !== 1 ? 's' : ''} from the data assets?`,
             confirmText: isRemovingAll ? 'Clear All' : 'Remove',
             confirmClass: 'btn-danger',
             icon: 'trash'
@@ -974,7 +974,7 @@ async function removeSelectedTables() {
             const data = await response.json();
             
             if (data.success) {
-                showNotification('Data sources cleared', 'success');
+                showNotification('Data assets cleared', 'success');
                 metadataCache = null;
                 tableSelections = {};
                 await loadMetadataStatus();
@@ -1014,7 +1014,7 @@ async function removeSelectedTables() {
 
 async function saveMetadataChanges(silent = false) {
     if (!metadataCache) {
-        if (!silent) showNotification('No data sources to save', 'warning');
+        if (!silent) showNotification('No data assets to save', 'warning');
         return;
     }
     
@@ -1039,7 +1039,7 @@ async function saveMetadataChanges(silent = false) {
         const data = await response.json();
         
         if (data.success) {
-            if (!silent) showNotification(`Saved data sources for ${allTables.length} tables`, 'success');
+            if (!silent) showNotification(`Saved data assets for ${allTables.length} tables`, 'success');
             updateMetadataGauges(metadataCache);
         } else {
             showNotification('Error: ' + data.message, 'error');
@@ -1129,8 +1129,8 @@ async function saveTableDetails() {
 async function clearMetadata() {
     const allTables = (metadataCache?.tables || []).map(t => t.full_name || t.name);
     const confirmed = await confirmRemovalWithImpact(allTables, {
-        title: 'Clear Data Sources',
-        message: 'Are you sure you want to clear the loaded data sources?',
+        title: 'Clear Data Assets',
+        message: 'Are you sure you want to clear the loaded data assets?',
         confirmText: 'Clear',
         confirmClass: 'btn-danger',
         icon: 'trash'
@@ -1150,7 +1150,7 @@ async function clearMetadata() {
             metadataCache = null;
             tableSelections = {};
             currentEditingTableIndex = null;
-            showNotification('Data sources cleared', 'success');
+            showNotification('Data assets cleared', 'success');
             await loadMetadataStatus();
         } else {
             showNotification('Error: ' + data.message, 'error');
@@ -1245,13 +1245,13 @@ async function confirmDataSourceChange() {
 
 async function updateMappingsFromMetadata() {
     if (!metadataCache || !metadataCache.tables || metadataCache.tables.length === 0) {
-        showNotification('No data sources loaded', 'warning');
+        showNotification('No data assets loaded', 'warning');
         return;
     }
     
     const confirmed = await showConfirmDialog({
         title: 'Update Mappings',
-        message: 'This will update entity and relationship mappings with the catalog.schema from each data source table. Continue?',
+        message: 'This will update entity and relationship mappings with the catalog.schema from each data asset. Continue?',
         confirmText: 'Update Mappings',
         confirmClass: 'btn-success',
         icon: 'arrow-right-circle'
@@ -1292,7 +1292,7 @@ async function updateMetadataFromUC() {
     console.log('[Metadata] Update from UC called');
     
     if (!metadataCache || !metadataCache.tables || metadataCache.tables.length === 0) {
-        showNotification('No data sources loaded to update', 'warning');
+        showNotification('No data assets loaded to update', 'warning');
         return;
     }
     

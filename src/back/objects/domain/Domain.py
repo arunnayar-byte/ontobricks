@@ -164,7 +164,7 @@ def merge_table_metadata(
 
     When *select_probe* is provided (the dict returned by
     :meth:`UnityCatalog.check_table_select_permission`), the table's
-    ``can_select`` / ``select_error`` fields are refreshed so the Data Sources
+    ``can_select`` / ``select_error`` fields are refreshed so the Data Assets
     "Rights" column stops reporting *unknown* for tables loaded before the probe
     existed.
     """
@@ -1904,7 +1904,7 @@ class Domain:
     def _invalidate_on_removal(self, removed: List[str]) -> Dict[str, List[str]]:
         """Drop generated artefacts when a removal orphaned live mappings.
 
-        Removing a data source that mappings still point at leaves the cached
+        Removing a data asset that mappings still point at leaves the cached
         R2RML/SQL describing tables the domain no longer knows about, so it
         must not survive the removal.  Returns the impact map so callers can
         report it.  No-op when nothing referenced the removed tables.
@@ -1920,7 +1920,7 @@ class Domain:
             entity_type="metadata_table",
             entity_ref=", ".join(sorted(impact)),
             summary=(
-                f"Removed {len(impact)} data source(s) still referenced by "
+                f"Removed {len(impact)} data asset(s) still referenced by "
                 f"{len({r for refs in impact.values() for r in refs})} mapping(s)"
             ),
             meta={"impact": impact},
@@ -2012,7 +2012,7 @@ class Domain:
         noun = "table" if updated == 1 else "tables"
         return {
             "success": True,
-            "message": f"Updated data source for {updated} {noun} to {target}",
+            "message": f"Updated data asset for {updated} {noun} to {target}",
             "tables_updated": updated,
         }
 

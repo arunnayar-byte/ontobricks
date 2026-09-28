@@ -5,7 +5,7 @@
 <div class="section-header d-flex justify-content-between align-items-center mb-4">
     <div class="me-auto">
         <h4 class="mb-1"><i class="bi bi-magic me-2"></i>Generate Ontology</h4>
-        <p class="text-muted mb-0 small">Detect candidate entities from your data sources, review them, then complete relations, attributes, and axioms.</p>
+        <p class="text-muted mb-0 small">Detect candidate entities from your data assets, review them, then complete relations, attributes, and axioms.</p>
     </div>
     <div class="d-flex gap-2">
         <button type="button" class="btn btn-sm btn-outline-secondary onto-discuss-btn"
@@ -62,7 +62,7 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="wizard-tab-metadata" data-bs-toggle="tab" data-bs-target="#wizard-pane-metadata"
                         type="button" role="tab" aria-controls="wizard-pane-metadata" aria-selected="true">
-                    <i class="bi bi-database"></i> Data Sources
+                    <i class="bi bi-database"></i> Data Assets
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -84,14 +84,14 @@
 
             <!-- Data Sources Tab -->
             <div class="tab-pane fade show active" id="wizard-pane-metadata" role="tabpanel" aria-labelledby="wizard-tab-metadata">
-                <h6 class="mb-2"><i class="bi bi-database"></i> Data Sources</h6>
+                <h6 class="mb-2"><i class="bi bi-database"></i> Data Assets</h6>
                     <p class="text-muted small mb-3">Select the tables, views, and metric views whose schema will be sent to the AI model for entity detection.</p>
                 <div id="wizardMetadataStatus">
                     <div class="d-flex align-items-center text-muted">
                         <div class="spinner-border spinner-border-sm me-2" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        Checking data sources...
+                        Checking data assets...
                     </div>
                 </div>
                 <div id="wizardMetadataPreview" class="mt-3 ob-hidden">
@@ -128,7 +128,7 @@
                 </div>
                 <div id="wizardNoMetadata" class="alert alert-info mt-3 ob-hidden">
                     <i class="bi bi-info-circle me-2"></i>
-                    No data sources loaded. You can still detect entities from documents or guidelines alone, or load data sources in <a href="/domain/#metadata">Data Sources</a>.
+                    No data assets loaded. You can still detect entities from documents or guidelines alone, or load data assets in <a href="/domain/#metadata">Data Assets</a>.
                 </div>
             </div>
 
@@ -209,7 +209,7 @@
     <h2 id="wizardReviewHeading" class="visually-hidden" tabindex="-1">Review Entities</h2>
 
     <div id="wizardStaleBanner" class="alert alert-warning d-flex align-items-center justify-content-between ob-hidden" role="alert">
-        <span><i class="bi bi-exclamation-triangle me-2"></i>The data sources or ontology changed since detection. Re-run detection to refresh candidates.</span>
+        <span><i class="bi bi-exclamation-triangle me-2"></i>The data assets or ontology changed since detection. Re-run detection to refresh candidates.</span>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-action="wizard-review-restart">
             <i class="bi bi-arrow-repeat me-1"></i>Re-detect
         </button>

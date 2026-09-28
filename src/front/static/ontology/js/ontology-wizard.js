@@ -513,7 +513,7 @@ async function loadWizardMetadata() {
             statusEl.innerHTML = `
                 <div class="d-flex align-items-center text-muted">
                     <i class="bi bi-info-circle me-2 fs-5"></i>
-                    <span>No data sources loaded — you can still detect entities from documents or guidelines</span>
+                    <span>No data assets loaded — you can still detect entities from documents or guidelines</span>
                 </div>
             `;
             previewEl.style.display = 'none';
@@ -524,7 +524,7 @@ async function loadWizardMetadata() {
         statusEl.innerHTML = `
             <div class="d-flex align-items-center text-danger">
                 <i class="bi bi-x-circle-fill me-2 fs-5"></i>
-                <span>Error loading data sources: ${error.message}</span>
+                <span>Error loading data assets: ${error.message}</span>
             </div>
         `;
         noMetadataEl.style.display = 'block';
@@ -717,7 +717,7 @@ async function runGenerateDetection() {
     if (!hasMetadata && !hasGuidelines && !hasDocs) {
         const message = unavailableDocuments.length > 0
             ? 'Document parsing is not ready. Wait for a ready document or provide another input.'
-            : 'Please provide at least data sources, documents, or guidelines';
+            : 'Please provide at least data assets, documents, or guidelines';
         showNotification(message, 'warning');
         return;
     }
