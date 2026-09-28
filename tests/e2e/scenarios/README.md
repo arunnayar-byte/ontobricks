@@ -50,7 +50,8 @@ suite in order and writes reports to `artifacts/scenarios/`:
 | `ONTOBRICKS_SCENARIO_BASE` | *(unset)* | Alternate base override (falls back after `LIVE_BASE`). |
 | `ONTOBRICKS_SCENARIO_CHAIN` | *(unset)* | `1` enables cross-file dependency chaining (set by the make target — see below). |
 | `ONTOBRICKS_SCENARIO_REPORT` | `artifacts/scenarios/campaign_report.md` | Where the validation Markdown report is written. |
-| `ONTOBRICKS_SCENARIO_CATALOG` / `_SCHEMA` | *(scenario default)* | Source tables scenario 1 imports from. |
+| `ONTOBRICKS_SCENARIO_GEN_TIMEOUT` | `420` | Max seconds to wait for Stage 1 detection. |
+| `ONTOBRICKS_SCENARIO_COMPLETE_TIMEOUT` | `420` | Max seconds to wait for Stage 3 completion/merge. |
 
 The make recipe inherits your shell environment, so exporting any of the above
 before `make scenario-campaign` works.

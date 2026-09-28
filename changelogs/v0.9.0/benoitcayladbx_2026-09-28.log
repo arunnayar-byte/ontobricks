@@ -146,3 +146,56 @@ Modified files:
 - docs/api.md
 
 Tests: `uv run --frozen pytest -q -m "not scenario"` → 7101 passed, 315 skipped, 6 deselected, 1 xfailed in 52.54s
+
+## Fix live scenario campaign interpreter and staged Generate
+
+Context: `make scenario-campaign` sourced `.venv/bin/activate` while
+`VIRTUAL_ENV` still pointed at the 0.8.1 worktree, so pytest ran 0.8.1
+scenario files against the 0.9 app. Scenario 1 then clicked Detect Entities
+and polled `/ontology/load` for classes — Stage 1 never merges OWL, so the
+run timed out with an empty class list.
+
+Changes:
+
+1. `Makefile`
+   Campaign uses `env -u VIRTUAL_ENV uv run --frozen pytest` from this
+   worktree (no `activate`).
+2. `tests/e2e/scenarios/test_scenario_01_generate_live.py`
+   Detect → poll draft `reviewing` → Continue to Complete → poll classes.
+3. `tests/units/e2e/test_scenario_campaign_wiring.py`
+   Contracts for the Makefile recipe and the staged wizard walk.
+4. `tests/e2e/scenarios/README.md`, `docs/development.md`
+   Campaign interpreter + Stage 1/3 timeouts documented.
+
+Modified files:
+- Makefile
+- tests/e2e/scenarios/test_scenario_01_generate_live.py
+- tests/units/e2e/test_scenario_campaign_wiring.py
+- tests/e2e/scenarios/README.md
+- docs/development.md
+
+Tests: `uv run --frozen pytest -q -m "not scenario"` → 7106 passed, 315 skipped, 6 deselected, 1 xfailed in 65.81s
+
+## Drive Stage 3 completion from the live scenario API
+
+Context: After the staged Generate update, scenario 1 detected 11 candidates
+then clicked Continue. The draft stayed at `reviewing` with 0 classes for
+420s — Stage 3 never started. Detection is async; Continue stays disabled
+until Review re-renders, so a DOM click is the wrong trigger. Completion
+must POST `/ontology/wizard/generate/complete` (the same call the button
+makes) and poll the task, then assert `/ontology/load` has classes.
+
+Changes:
+
+1. `tests/e2e/scenarios/test_scenario_01_generate_live.py`
+   After a reviewing draft, POST complete, poll the task, assert classes.
+2. `tests/units/e2e/test_scenario_campaign_wiring.py`
+   Contract: detect click, then complete POST, then ontology load.
+
+Modified files:
+- tests/e2e/scenarios/test_scenario_01_generate_live.py
+- tests/units/e2e/test_scenario_campaign_wiring.py
+
+Tests: `uv run --frozen pytest -q -m "not scenario"` → 7106 passed, 315 skipped, 6 deselected, 1 xfailed in 57.10s
+
+

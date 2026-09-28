@@ -618,8 +618,11 @@ make scenario-campaign ONTOBRICKS_LIVE_BASE=https://<app-url>
 
 This sets `ONTOBRICKS_SCENARIO_LIVE=1` + `ONTOBRICKS_SCENARIO_CHAIN=1`
 (pytest-dependency chaining: an upstream failure skips the downstream suites),
-runs them in filename order, and writes reports to `artifacts/scenarios/`
-(`campaign.xml`, `campaign.html`, `campaign_report.md`). The canonical guide
+runs them in filename order via `uv run --frozen` with `VIRTUAL_ENV` cleared
+(so a foreign worktree venv cannot hijack pytest), and writes reports to
+`artifacts/scenarios/` (`campaign.xml`, `campaign.html`, `campaign_report.md`).
+Scenario 1 drives the staged Generate wizard (Detect Entities → review →
+Complete), not the 0.8 one-shot Generate click. The canonical guide
 for environment variables, chaining, registry isolation, and adding scenarios
 is `tests/e2e/scenarios/README.md`.
 

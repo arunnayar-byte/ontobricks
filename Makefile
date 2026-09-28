@@ -115,10 +115,10 @@ scenario-campaign:
 	done
 	@mkdir -p $(SCENARIO_ARTIFACTS)
 	@echo "Running live scenarios (JUnit + HTML → $(SCENARIO_ARTIFACTS)/)..."
-	. .venv/bin/activate && \
+	cd "$(CURDIR)" && env -u VIRTUAL_ENV \
 	  ONTOBRICKS_SCENARIO_LIVE=1 ONTOBRICKS_SCENARIO_CHAIN=1 \
 	  ONTOBRICKS_LIVE_BASE="$(ONTOBRICKS_LIVE_BASE)" \
-	  pytest tests/e2e/scenarios -m scenario -v -s --no-cov -p no:randomly \
+	  uv run --frozen pytest tests/e2e/scenarios -m scenario -v -s --no-cov -p no:randomly \
 	    --junitxml=$(SCENARIO_ARTIFACTS)/campaign.xml \
 	    --html=$(SCENARIO_ARTIFACTS)/campaign.html --self-contained-html
 	@echo "Reports: $(SCENARIO_ARTIFACTS)/campaign.html  (JUnit: $(SCENARIO_ARTIFACTS)/campaign.xml)"
