@@ -1783,19 +1783,31 @@ class Domain:
                         "the app service principal."
                     )
             else:
-                # Probe SELECT on the first table
-                probe_table = tables[0]
-                select_result = await run_blocking(
-                    client.check_table_select_permission, catalog, schema, probe_table
+                # Probe SELECT on a non-metric-view source. Metric views cannot
+                # be queried with SELECT * and would false-fail this schema probe.
+                probe_table = next(
+                    (
+                        row["name"]
+                        for row in table_list
+                        if row.get("object_kind") != "metric_view"
+                    ),
+                    None,
                 )
-                permissions["can_select"] = select_result["can_select"]
-                if not select_result["can_select"]:
-                    permissions["select_error"] = select_result["error"]
-                    permissions["permission_warning"] = (
-                        f"The service principal can list tables in {catalog}.{schema} "
-                        "but cannot SELECT from them. "
-                        "Grant SELECT on the tables (or the schema) to the app service principal."
+                if probe_table:
+                    select_result = await run_blocking(
+                        client.check_table_select_permission,
+                        catalog,
+                        schema,
+                        probe_table,
                     )
+                    permissions["can_select"] = select_result["can_select"]
+                    if not select_result["can_select"]:
+                        permissions["select_error"] = select_result["error"]
+                        permissions["permission_warning"] = (
+                            f"The service principal can list tables in {catalog}.{schema} "
+                            "but cannot SELECT from them. "
+                            "Grant SELECT on the tables (or the schema) to the app service principal."
+                        )
 
             return {
                 "success": True,
@@ -2293,7 +2305,15 @@ class Domain:
                 try:
                     logger.debug("Metadata update: updating table: %s", table_name)
                     old_table = existing_tables[table_name]
-                    new_columns = client.get_table_columns(catalog, schema, table_name)
+                    kind = old_table.get("object_kind") or "table"
+                    if kind == "metric_view":
+                        new_columns = client.get_metric_view_columns_with_roles(
+                            catalog, schema, table_name
+                        )
+                    else:
+                        new_columns = client.get_table_columns(
+                            catalog, schema, table_name
+                        )
                     logger.debug(
                         "Metadata update: got %s columns for %s",
                         len(new_columns) if new_columns else 0,
@@ -2306,7 +2326,11 @@ class Domain:
                         "Metadata update: table comment from UC: %s", table_comment
                     )
                     select_probe = client.check_table_select_permission(
-                        catalog, schema, table_name
+                        catalog,
+                        schema,
+                        table_name,
+                        object_kind=kind,
+                        columns=new_columns,
                     )
                     # Snapshot before the merge — merge_table_metadata replaces
                     # old_table["columns"] in place.

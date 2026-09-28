@@ -1,0 +1,57 @@
+# Wire UC metric views into Ontology Generate
+
+Context: After loading Unity Catalog metric views, Ontology → Generate
+detection returned no entities. Mapping already treated metric views as
+first-class sources; Stage 1 did not (metadata tools stripped object_kind
+and column roles, the prompt treated sources as flat tables, and the
+SELECT-permission probe used SELECT * which metric views reject).
+
+Changes:
+
+1. `src/agents/tools/metadata.py`
+   `get_metadata` / `get_table_detail` expose `object_kind` and per-column
+   `role`.
+2. `src/agents/agent_owl_generator/prompts.py`
+   Stage-1 prompt: metric-view dimensions are entity evidence; measures
+   are never classes.
+3. `src/back/core/databricks/uc/UnityCatalog.py`
+   SELECT probe for metric views uses `build_metric_view_base_sql` + LIMIT 0.
+4. `src/back/core/databricks/uc/MetadataService.py`,
+   `src/back/core/databricks/DatabricksClient.py`,
+   `src/back/objects/domain/Domain.py`,
+   `src/back/objects/domain/_metadata_tasks.py`
+   Load/refresh pass object_kind + columns into the probe; schema-wide
+   probe skips metric views so SELECT * does not false-fail the picker.
+5. `src/front/static/ontology/js/ontology-wizard.js`,
+   `src/front/templates/partials/ontology/_ontology_wizard.html`
+   Generate source list badges metric views.
+6. `.planning/agents/agent_owl_generator/SPEC.md`,
+   `tests/eval/datasets/agent_owl_generator/metric_view.jsonl`
+   Eval delta (10 rows) + SPEC tool/failure-mode notes. Live MLflow eval
+   not run (warehouse + Foundation Model access).
+7. `docs/features.md`, `docs/user-guide.md`
+   Generate reads metric-view dimensions as entities.
+
+Modified files:
+- src/agents/tools/metadata.py
+- src/agents/agent_owl_generator/prompts.py
+- src/back/core/databricks/uc/UnityCatalog.py
+- src/back/core/databricks/uc/MetadataService.py
+- src/back/core/databricks/DatabricksClient.py
+- src/back/objects/domain/Domain.py
+- src/back/objects/domain/_metadata_tasks.py
+- src/front/static/ontology/js/ontology-wizard.js
+- src/front/templates/partials/ontology/_ontology_wizard.html
+- .planning/agents/agent_owl_generator/SPEC.md
+- tests/eval/datasets/agent_owl_generator/metric_view.jsonl
+- .planning/agents/agent_owl_generator/eval/metric_view.jsonl
+- tests/units/agents/test_owl_generator_metric_views.py
+- tests/units/core/test_unity_catalog.py
+- tests/units/core/test_metadata_service_object_kind.py
+- tests/units/domain/test_metadata_refresh_diff.py
+- tests/units/domain/test_list_schema_tables_object_kind.py
+- tests/units/front/test_ontology_generate_wizard_staged.py
+- docs/features.md
+- docs/user-guide.md
+
+Tests: `uv run --frozen pytest -q -m "not scenario"` → 7098 passed, 315 skipped, 6 deselected, 1 xfailed in 65.70s

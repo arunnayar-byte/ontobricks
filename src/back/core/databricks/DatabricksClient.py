@@ -124,8 +124,13 @@ class DatabricksClient:
     def probe_schema_has_tables(self, catalog, schema):
         return self.catalog.probe_schema_has_tables(catalog, schema)
 
-    def check_table_select_permission(self, catalog, schema, table):
-        return self.catalog.check_table_select_permission(catalog, schema, table)
+    def check_table_select_permission(self, catalog, schema, table, **kwargs):
+        return self.catalog.check_table_select_permission(
+            catalog, schema, table, **kwargs
+        )
+
+    def get_metric_view_columns_with_roles(self, catalog, schema, name):
+        return self.catalog.get_metric_view_columns_with_roles(catalog, schema, name)
 
     def get_table_columns(self, catalog, schema, table):
         return self.catalog.get_table_columns(catalog, schema, table)

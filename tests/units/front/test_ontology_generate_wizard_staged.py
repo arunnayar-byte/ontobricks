@@ -861,3 +861,11 @@ def test_review_discard_button_still_works_and_is_relabeled_consistently():
     js = _read(REVIEW_JS)
     assert "wizard-review-discard" in js
     assert "/ontology/wizard/generate/draft/discard" in js
+
+
+def test_generate_wizard_shows_metric_view_badge():
+    js = _read(WIZARD_JS)
+    assert "object_kind" in js
+    assert "Metric View" in js
+    html = _read(HTML)
+    assert "metric views" in html.lower()

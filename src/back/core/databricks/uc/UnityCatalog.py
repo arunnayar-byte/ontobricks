@@ -7,7 +7,7 @@ volume management).
 
 import requests
 from databricks import sql
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
 from back.core.logging import get_logger
@@ -20,6 +20,7 @@ from .identifiers import (
     quote_uc_identifier,
     validate_uc_identifier,
 )
+from .metric_sql import build_metric_view_base_sql
 
 logger = get_logger(__name__)
 
@@ -368,23 +369,44 @@ class UnityCatalog:
             return -1
 
     def check_table_select_permission(
-        self, catalog: str, schema: str, table: str
+        self,
+        catalog: str,
+        schema: str,
+        table: str,
+        *,
+        object_kind: str = "table",
+        columns: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """Probe whether the caller can SELECT from *catalog*.*schema*.*table*.
 
-        Runs ``SELECT * … LIMIT 0`` — cheap, no data returned, but sufficient
-        to confirm row-level read access.
+        Tables and views use ``SELECT * … LIMIT 0``. Metric views cannot be
+        queried with ``SELECT *``; they are probed with the metric-aware base
+        SQL (dimensions + ``MEASURE()`` + ``GROUP BY``) plus ``LIMIT 0``.
 
         Returns:
         - ``can_select`` (bool): True when the query succeeds
         - ``error`` (str | None): human-readable reason when can_select is False
         """
-        fqn = quote_uc_fqn(catalog, schema, table)
+        kind = (object_kind or "table").strip() or "table"
+        if kind == "metric_view":
+            cols = columns or []
+            if not cols:
+                return {
+                    "can_select": False,
+                    "error": "Metric view has no columns to probe",
+                }
+            fqn = f"{catalog}.{schema}.{table}"
+            probe_sql = build_metric_view_base_sql(
+                {"full_name": fqn, "columns": cols}
+            ) + "\nLIMIT 0"
+        else:
+            fqn = quote_uc_fqn(catalog, schema, table)
+            probe_sql = f"SELECT * FROM {fqn} LIMIT 0"
         try:
             params = self._auth.get_sql_connection_params()
             with sql.connect(**params) as conn:
                 with conn.cursor() as cur:
-                    cur.execute(f"SELECT * FROM {fqn} LIMIT 0")
+                    cur.execute(probe_sql)
             return {"can_select": True, "error": None}
         except Exception as exc:
             logger.info(

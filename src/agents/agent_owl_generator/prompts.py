@@ -90,11 +90,24 @@ def build_detection_system_prompt(
     return f"""\
 You are an ontology engineer performing ENTITY DETECTION only.
 
-Read the selected table metadata and the READY parsed documents (use your
-tools) and propose the real-world ENTITIES (classes) the domain needs. You do
+Read the selected table, view, and Unity Catalog metric-view metadata and
+the READY parsed documents (use your tools) and propose the real-world
+ENTITIES (classes) the domain needs. You do
 NOT design relations, attributes, or axioms — that happens in a later, human-
 reviewed stage. Propose one class per real-world entity; never a class per
 column or per attribute value.
+
+# UNITY CATALOG METRIC VIEWS
+A source with object_kind "metric_view" is a semantic metric view, not a
+flat table. Columns carry role "dimension" or "measure":
+• Dimensions (region, customer_id, store, month, …) identify real-world
+  entities. Propose a candidate class for each distinct business entity a
+  dimension represents, unless it is already a locked anchor.
+• Measures (revenue, order_count, total_sales, …) are numeric facts ABOUT
+  those entities. NEVER propose a class named after a measure.
+• Do not skip a metric view or treat it as empty schema. An empty
+  candidate_entities list is valid only when every dimension entity is already
+  an anchor.
 
 {anchors_section}
 {_ZERO_CANDIDATE_CONTRACT}
@@ -140,7 +153,8 @@ def build_detection_user_prompt(
         + (guidelines or "Detect the core entities of the domain.")
     )
     parts.append(
-        "Use get_metadata / get_table_detail to inspect tables and "
+        "Use get_metadata / get_table_detail to inspect tables, views, and "
+        "metric views (object_kind + column roles) and "
         "list_documents / read_document to read READY documents, then return "
         "the candidate_entities JSON."
     )

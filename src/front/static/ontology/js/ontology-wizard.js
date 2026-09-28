@@ -465,6 +465,12 @@ async function loadWizardMetadata() {
                 const description = table.comment || table.description || '';
                 const tableName = table.full_name || table.name;
                 const displayName = tableName.split('.').pop();
+                const kind = table.object_kind || 'table';
+                const kindBadge = kind === 'metric_view'
+                    ? '<span class="badge bg-info ms-1">Metric View</span>'
+                    : (kind === 'view'
+                        ? '<span class="badge bg-secondary ms-1">View</span>'
+                        : '');
                 // Table names/comments come straight from the connected
                 // catalog (server-controlled today, but this rendering path
                 // was substantially rewritten for the staged wizard) — every
@@ -486,7 +492,7 @@ async function loadWizardMetadata() {
                         </td>
                         <td>
                             <label for="wizardTable${index}" class="mb-0 cursor-pointer">
-                                <strong>${safeDisplayName}</strong>
+                                <strong>${safeDisplayName}</strong>${kindBadge}
                                 <br><small class="text-muted">${safeTableName}</small>
                             </label>
                         </td>

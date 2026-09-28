@@ -2051,7 +2051,11 @@ resumes exactly where you left it on your next visit.
 
 **1. Configure & Detect**
 
-1. You'll see the list of tables loaded from metadata. **Check the tables** you want the LLM to consider.
+1. You'll see the list of tables, views, and **metric views** loaded from
+   metadata (metric views show a **Metric View** badge). **Check the sources**
+   you want the LLM to consider. For a metric view, detection uses
+   **dimension** columns as entity evidence and does not propose classes named
+   after **measures**.
 2. **(Optional)** Click a **Quick Template** button to pre-fill domain-specific guidelines:
    - **CRM** — customers, contacts, accounts, opportunities
    - **E-Commerce** — products, categories, orders, payments

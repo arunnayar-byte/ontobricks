@@ -20,7 +20,8 @@ class _FakeCatalog:
     def get_table_comment(self, c, s, n):
         return ""
 
-    def check_table_select_permission(self, c, s, n):
+    def check_table_select_permission(self, c, s, n, **kwargs):
+        self.last_probe = {"name": n, **kwargs}
         return {"can_select": True, "error": None}
 
     def get_metric_view_columns_with_roles(self, c, s, n):
@@ -51,6 +52,19 @@ def test_load_schema_metadata_tags_kinds():
     assert ok, msg
     kinds = {t["name"]: t["object_kind"] for t in meta["tables"]}
     assert kinds == {"orders": "table", "rev_mv": "metric_view"}
+
+
+def test_load_probes_metric_view_with_kind_and_columns():
+    catalog = _FakeCatalog()
+    svc = MetadataService(catalog_svc=catalog)
+    ok, msg, meta = svc.load_selected_tables("c", "s", ["rev_mv"])
+    assert ok, msg
+    probe = catalog.last_probe
+    assert probe["object_kind"] == "metric_view"
+    assert {c["name"]: c["role"] for c in probe["columns"]} == {
+        "region": "dimension",
+        "revenue": "measure",
+    }
 
 
 def test_legacy_metadata_without_object_kind_defaults_table():

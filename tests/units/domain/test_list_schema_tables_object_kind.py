@@ -27,7 +27,7 @@ class _FakeClient:
             {"name": "cust_v", "table_type": "VIEW"},
         ]
 
-    def check_table_select_permission(self, catalog, schema, table):
+    def check_table_select_permission(self, catalog, schema, table, **kwargs):
         return {"can_select": True, "error": None}
 
     def probe_schema_has_tables(self, catalog, schema):

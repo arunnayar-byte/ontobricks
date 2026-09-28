@@ -215,7 +215,11 @@ class MetadataService:
                         col.setdefault("role", "dimension")
                 comment = self._catalog.get_table_comment(catalog, schema, name)
                 select_probe = self._catalog.check_table_select_permission(
-                    catalog, schema, name
+                    catalog,
+                    schema,
+                    name,
+                    object_kind=object_kind,
+                    columns=columns,
                 )
                 tables.append(
                     {

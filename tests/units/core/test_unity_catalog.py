@@ -639,3 +639,25 @@ class TestCheckTableSelectPermission:
         out = uc.check_table_select_permission("cat", "sch", "tbl")
         assert out["can_select"] is False
         assert "no select" in out["error"]
+
+    @patch("databricks.sql.connect")
+    def test_metric_view_probe_uses_measure_sql_not_select_star(
+        self, mock_connect, auth_with_warehouse
+    ):
+        mock_cursor = _make_sql_mocks(mock_connect)
+        uc = UnityCatalog(auth_with_warehouse)
+        out = uc.check_table_select_permission(
+            "cat",
+            "sales",
+            "region_metrics",
+            object_kind="metric_view",
+            columns=[
+                {"name": "region", "role": "dimension"},
+                {"name": "revenue", "role": "measure"},
+            ],
+        )
+        assert out == {"can_select": True, "error": None}
+        sql = mock_cursor.execute.call_args[0][0]
+        assert "SELECT *" not in sql
+        assert "MEASURE(`revenue`)" in sql
+        assert "LIMIT 0" in sql

@@ -87,10 +87,20 @@ def run_metadata_update_task(
         for i, table_name in enumerate(tables_to_update):
             try:
                 old_table = existing_tables[table_name]
-                new_columns = client.get_table_columns(catalog, schema, table_name)
+                kind = old_table.get("object_kind") or "table"
+                if kind == "metric_view":
+                    new_columns = client.get_metric_view_columns_with_roles(
+                        catalog, schema, table_name
+                    )
+                else:
+                    new_columns = client.get_table_columns(catalog, schema, table_name)
                 table_comment = client.get_table_comment(catalog, schema, table_name)
                 select_probe = client.check_table_select_permission(
-                    catalog, schema, table_name
+                    catalog,
+                    schema,
+                    table_name,
+                    object_kind=kind,
+                    columns=new_columns,
                 )
                 # Snapshot before the merge — merge_table_metadata replaces
                 # old_table["columns"] in place, so the previous schema is
