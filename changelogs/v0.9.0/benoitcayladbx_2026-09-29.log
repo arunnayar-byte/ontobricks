@@ -1,0 +1,99 @@
+## Add Domain Search cache switch and request cache override
+
+Context: Lakehouse and Lakebase searches (Explorer, GraphQL, MCP
+`describe_entity`) used adjacency / entity-search / props companions whenever
+those tables existed. There was no domain switch and no per-request override,
+so Views-only Lakehouse could still read a stale snapshot, and operators could
+not force live SPO. This adds one Search cache control (default on), pending
+rebuild after re-enable, and a `cache` query/body flag that always wins.
+
+Changes:
+
+1. `src/back/core/graphdb/search_cache.py`
+   Policy helpers: parse `cache`, resolve auto/force_on/force_off, rebuild skip,
+   mark ready/pending.
+2. `src/back/core/graphdb/GraphDBBackend.py`
+   Gate `adjacency_ready` / `entity_search_ready` / props reads on the request
+   mode; `cache=true` with missing companions raises ValidationError.
+3. `src/back/objects/session/DomainSession.py`, `src/back/objects/domain/Domain.py`
+   Persist `graph_cache_enabled` / `graph_cache_state`; new domains pending;
+   legacy import missing keys → enabled+ready; re-enable → pending_refresh.
+4. `src/front/templates/partials/domain/_domain_information.html`,
+   `src/front/static/domain/js/domain-information.js`,
+   `src/front/static/domain/js/domain.js`,
+   `src/front/static/global/js/navbar.js`
+   Backend tab Search cache switch (Lakehouse/Lakebase) on both save paths.
+5. `src/api/routers/digitaltwin.py`, `src/api/routers/internal/dtwin.py`,
+   `src/back/fastapi/graphql_routes.py`, `src/mcp-server/server/tools.py`
+   `cache` on public/session find, filter, GraphQL, MCP describe_entity;
+   find responses include `cache_used` / `cache_mode`.
+6. Rebuild callers (`_build_pipeline.py`, Delta pipeline, DigitalTwin refresh,
+   `cache_refresh.py`, ReasoningService, CohortBuilder, Lakebase/Delta purge)
+   skip companion rebuild when the switch is off; Refresh cache fails if
+   disabled.
+7. `docs/user-guide.md`, `docs/features.md`, `docs/optimizations.md`
+   Document the switch and request override.
+8. Unit tests for policy, UI contract, session round-trip, purge skip, and
+   Preview seed gating under the new ready checks.
+
+Modified files:
+- src/back/core/graphdb/search_cache.py
+- src/back/core/graphdb/GraphDBBackend.py
+- src/back/core/graphdb/GraphDBFactory.py
+- src/back/core/graphdb/delta/DeltaFlatStore.py
+- src/back/core/graphdb/delta/DeltaTripleStoreBuildPipeline.py
+- src/back/core/graphdb/lakebase/LakebaseFlatStore.py
+- src/back/core/graph_analysis/CohortBuilder.py
+- src/back/core/reasoning/ReasoningService.py
+- src/back/objects/session/DomainSession.py
+- src/back/objects/domain/Domain.py
+- src/back/objects/digitaltwin/DigitalTwin.py
+- src/back/objects/digitaltwin/_build_pipeline.py
+- src/back/objects/registry/scheduler_tasks/cache_refresh.py
+- src/api/routers/digitaltwin.py
+- src/api/routers/internal/dtwin.py
+- src/back/fastapi/graphql_routes.py
+- src/mcp-server/server/tools.py
+- src/front/templates/partials/domain/_domain_information.html
+- src/front/static/domain/js/domain-information.js
+- src/front/static/domain/js/domain.js
+- src/front/static/global/js/navbar.js
+- docs/user-guide.md
+- docs/features.md
+- docs/optimizations.md
+- tests/units/graphdb/test_search_cache.py
+- tests/units/front/test_search_cache_ui.py
+- tests/units/domain/test_domain_session.py
+- tests/units/graphdb/test_graphdb_adjacency_contract.py
+- tests/units/graphdb/test_materialized_inference_purge.py
+- changelogs/v0.9.0/benoitcayladbx_2026-09-29.log
+
+Tests: uv run --frozen pytest -q -m "not scenario" → 7154 passed, 315 skipped, 6 deselected, 1 xfailed in 54.71s
+
+## Equalize page-title top inset with subtitle gap
+
+Context: Section titles sat flush to the content top on desktop
+(``padding-top: 0``) while the subtitle-to-content gap was 0.5rem. Pages
+looked tighter above the heading than below it (e.g. "Domain Information").
+
+Changes:
+
+1. `src/front/static/global/css/main.css`
+   `.section-header` and `.page-header` top padding is 0.5rem, matching the
+   header's bottom margin (subtitle -> content).
+2. `src/front/static/global/css/sidebar-layout.css`
+   Desktop sidebar titles keep 0.5rem top padding instead of zeroing it.
+3. `tests/units/front/test_clarity_design_contract.py`
+   Contract: title top inset equals subtitle -> content gap (0.5rem).
+4. `.cursor/11-frontend-design.mdc`
+   Document the 0.5rem title inset.
+
+Modified files:
+- src/front/static/global/css/main.css
+- src/front/static/global/css/sidebar-layout.css
+- tests/units/front/test_clarity_design_contract.py
+- .cursor/11-frontend-design.mdc
+- changelogs/v0.9.0/benoitcayladbx_2026-09-29.log
+
+Tests: uv run --frozen pytest -q -m "not scenario" → 7155 passed, 315 skipped, 6 deselected, 1 xfailed in 54.76s
+

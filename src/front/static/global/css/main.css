@@ -1123,7 +1123,9 @@ body {
 }
 
 .section-header {
-    padding-top: 1rem;
+    /* Same as the header's bottom margin (subtitle → content), so the
+       title block has equal space above and below. */
+    padding-top: 0.5rem;
     padding-right: 12px;
 }
 
@@ -1235,6 +1237,7 @@ body {
 
 .page-header {
     margin-bottom: 2rem;
+    padding-top: 0.5rem;
     padding-bottom: 1rem;
     border-bottom: 2px solid var(--db-border);
 }

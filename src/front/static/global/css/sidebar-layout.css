@@ -369,12 +369,11 @@ body.full-width-layout {
     margin-bottom: 0.5rem !important;
 }
 
-/* Section headers inherit 1rem of global top padding. Remove that structural
-   inset on desktop so the complete title box, including its icon, meets the
-   sidebar card's top border without overlapping the L2 navbar. */
+/* The space above the title equals the space below the subtitle
+   (``margin-bottom`` above), so the title block is vertically balanced. */
 @media (min-width: 769px) {
     .sidebar-layout .section-header {
-        padding-top: 0;
+        padding-top: 0.5rem;
     }
 }
 
