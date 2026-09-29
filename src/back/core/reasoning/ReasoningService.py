@@ -519,10 +519,14 @@ class ReasoningService:
             if callable(optimize_fn):
                 optimize_fn(table_name)
             if getattr(self._store, "supports_adjacency", False) is True:
+                from back.core.graphdb.search_cache import rebuild_graph_cache_if_enabled
+
                 logger.info(
                     "Rebuilding adjacency index after %d inferred triples", count
                 )
-                self._store.rebuild_adjacency(table_name)
+                rebuild_graph_cache_if_enabled(
+                    self._store, table_name, self._domain
+                )
         logger.info("Materialised %d inferred triples into %s", count, table_name)
         return count
 

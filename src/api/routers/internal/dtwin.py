@@ -1174,6 +1174,14 @@ async def filter_triplestore(
 
         domain = get_domain(session_mgr)
         store = _require_graph_store(domain, settings)
+        from back.core.graphdb.search_cache import (
+            apply_search_cache_to_store,
+            parse_cache_param,
+        )
+
+        apply_search_cache_to_store(
+            store, domain, parse_cache_param(data.get("cache"))
+        )
         query_table = _graph_query_table(
             domain, settings, store, include_inferred=include_inferred
         )
@@ -2854,6 +2862,7 @@ async def dtwin_triples_find(
     depth: int = 1,
     limit: int = 1000,
     offset: int = 0,
+    cache: Optional[str] = None,
     session_mgr: SessionManager = Depends(get_session_manager),
     settings: Settings = Depends(get_settings),
 ):
@@ -2876,6 +2885,13 @@ async def dtwin_triples_find(
 
     domain = get_domain(session_mgr)
     store = _require_graph_store(domain, settings)
+    from back.core.graphdb.search_cache import (
+        apply_search_cache_to_store,
+        parse_cache_param,
+        search_cache_usage,
+    )
+
+    apply_search_cache_to_store(store, domain, parse_cache_param(cache))
     table = _graph_query_table(domain, settings, store)
     if not table:
         raise ValidationError("Graph name not configured")
@@ -2914,6 +2930,9 @@ async def dtwin_triples_find(
         }
         if result.get("message"):
             payload["message"] = result["message"]
+        mode, used = search_cache_usage(store, table)
+        payload["cache_used"] = used
+        payload["cache_mode"] = mode
         return payload
     except (ValidationError, InfrastructureError, NotFoundError):
         raise
@@ -2949,6 +2968,9 @@ async def dtwin_neighbors(
 
     domain = get_domain(session_mgr)
     store = _require_graph_store(domain, settings)
+    from back.core.graphdb.search_cache import apply_search_cache_to_store
+
+    apply_search_cache_to_store(store, domain, None)
     table = _graph_query_table(domain, settings, store)
     if not table:
         raise ValidationError("Graph name not configured")

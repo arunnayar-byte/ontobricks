@@ -710,13 +710,17 @@ class CohortBuilder:
             (deleted != 0 or inserted > 0)
             and getattr(self._store, "supports_adjacency", False) is True
         ):
+            from back.core.graphdb.search_cache import rebuild_graph_cache_if_enabled
+
             logger.info(
                 "CohortBuilder: rebuilding adjacency index after cohort materialization "
                 "(deleted=%d, inserted=%d)",
                 deleted,
                 inserted,
             )
-            self._store.rebuild_adjacency(self._graph_name)
+            rebuild_graph_cache_if_enabled(
+                self._store, self._graph_name, getattr(self, "_domain", None)
+            )
         return inserted
 
     def materialize_to_uc(

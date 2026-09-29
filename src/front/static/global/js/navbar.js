@@ -767,6 +767,12 @@ function buildDomainInfoPayload() {
             ? (graphBackendEl.value === 'databricks' && materializationEl
                 ? materializationEl.value : 'view')
             : undefined,
+        graph_cache_enabled: (function () {
+            const backend = graphBackendEl ? graphBackendEl.value : '';
+            const cacheEl = document.getElementById('domainGraphCacheEnabled');
+            if (backend !== 'databricks' && backend !== 'lakebase') return undefined;
+            return cacheEl ? cacheEl.checked : true;
+        })(),
         version: versionEl ? versionEl.value : undefined,
         mcp_policy: buildMcpPolicy(),
     };

@@ -267,6 +267,15 @@ class Domain:
             "lakehouse_materialization": self._coerce_lakehouse_materialization(
                 self._s.info.get("lakehouse_materialization")
             ),
+            "graph_cache_enabled": self._coerce_graph_cache_enabled(
+                self._s.info.get("graph_cache_enabled")
+            ),
+            "graph_cache_state": self._coerce_graph_cache_state(
+                self._s.info.get("graph_cache_state"),
+                enabled=self._coerce_graph_cache_enabled(
+                    self._s.info.get("graph_cache_enabled")
+                ),
+            ),
             "view_table": view_table,
             "graph_name": graph_name,
         }
@@ -437,6 +446,7 @@ class Domain:
                 ),
             }
         )
+        self._apply_graph_cache_save(data)
         self._s.info.pop("neo4j_database", None)
 
         # Ontology-only ("No Backend") domains never expose graph tools: force
@@ -494,6 +504,15 @@ class Domain:
             "lakehouse_materialization": self._coerce_lakehouse_materialization(
                 self._s.info.get("lakehouse_materialization")
             ),
+            "graph_cache_enabled": self._coerce_graph_cache_enabled(
+                self._s.info.get("graph_cache_enabled")
+            ),
+            "graph_cache_state": self._coerce_graph_cache_state(
+                self._s.info.get("graph_cache_state"),
+                enabled=self._coerce_graph_cache_enabled(
+                    self._s.info.get("graph_cache_enabled")
+                ),
+            ),
         }
 
     @staticmethod
@@ -521,6 +540,51 @@ class Domain:
         return normalize_lakehouse_materialization(
             raw if isinstance(raw, str) else None
         )
+
+    @staticmethod
+    def _coerce_graph_cache_enabled(raw: Any) -> bool:
+        from back.core.graphdb.search_cache import normalize_graph_cache_enabled
+
+        return normalize_graph_cache_enabled(raw)
+
+    @staticmethod
+    def _coerce_graph_cache_state(raw: Any, *, enabled: bool) -> str:
+        from back.core.graphdb.search_cache import (
+            GRAPH_CACHE_STATE_READY,
+            normalize_graph_cache_state,
+        )
+
+        return normalize_graph_cache_state(
+            raw, enabled=enabled, default_when_missing=GRAPH_CACHE_STATE_READY
+        )
+
+    def _apply_graph_cache_save(self, data: Dict[str, Any]) -> None:
+        from back.core.graphdb.search_cache import (
+            GRAPH_CACHE_STATE_READY,
+            normalize_graph_cache_enabled,
+            normalize_graph_cache_state,
+            state_after_enabled_change,
+        )
+
+        previous = normalize_graph_cache_enabled(
+            self._s.info.get("graph_cache_enabled")
+        )
+        if "graph_cache_enabled" in data:
+            enabled = normalize_graph_cache_enabled(data.get("graph_cache_enabled"))
+        else:
+            enabled = previous
+        if "graph_cache_enabled" in data and enabled != previous:
+            state = state_after_enabled_change(
+                previous_enabled=previous, enabled=enabled
+            )
+        else:
+            state = normalize_graph_cache_state(
+                self._s.info.get("graph_cache_state"),
+                enabled=enabled,
+                default_when_missing=GRAPH_CACHE_STATE_READY,
+            )
+        self._s.info["graph_cache_enabled"] = enabled
+        self._s.info["graph_cache_state"] = state
 
     @staticmethod
     def _sanitize_base_uri(uri: str) -> str:
@@ -603,6 +667,15 @@ class Domain:
             "neo4j_connection": str(self._s.info.get("neo4j_connection", "") or "").strip(),
             "lakehouse_materialization": self._coerce_lakehouse_materialization(
                 self._s.info.get("lakehouse_materialization")
+            ),
+            "graph_cache_enabled": self._coerce_graph_cache_enabled(
+                self._s.info.get("graph_cache_enabled")
+            ),
+            "graph_cache_state": self._coerce_graph_cache_state(
+                self._s.info.get("graph_cache_state"),
+                enabled=self._coerce_graph_cache_enabled(
+                    self._s.info.get("graph_cache_enabled")
+                ),
             ),
             # Catalog for the MCP tab, so the template never restates the
             # tool / context lists that live in back.core.mcp_tools.

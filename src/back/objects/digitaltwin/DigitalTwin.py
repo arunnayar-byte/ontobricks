@@ -2228,6 +2228,16 @@ class DigitalTwin:
                 )
                 return
 
+            from back.core.graphdb.search_cache import (
+                CACHE_DISABLED_REFRESH_MESSAGE,
+                graph_cache_rebuild_allowed,
+                rebuild_graph_cache_if_enabled,
+            )
+
+            if not graph_cache_rebuild_allowed(domain_snap):
+                tm.fail_task(task_id, CACHE_DISABLED_REFRESH_MESSAGE)
+                return
+
             graph_name = effective_graph_name(domain_snap).strip()
             if not graph_name:
                 tm.fail_task(
@@ -2245,7 +2255,7 @@ class DigitalTwin:
                     f"Rebuilding graph indexes sequentially for {graph_name}"
                 )
             tm.update_progress(task_id, 70, _rebuild_msg)
-            store.rebuild_adjacency(graph_name)
+            rebuild_graph_cache_if_enabled(store, graph_name, domain_snap)
 
             tm.complete_task(
                 task_id,

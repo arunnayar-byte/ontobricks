@@ -463,7 +463,11 @@ class LakebaseFlatStore(LakebaseBase):
         count = self.count_triples(companion)
         with self._cursor() as cur:
             _companion_ddl.truncate_companion(cur, companion)
-        self.rebuild_adjacency(table_name)
+        from back.core.graphdb.search_cache import rebuild_graph_cache_if_enabled
+
+        rebuild_graph_cache_if_enabled(
+            self, table_name, getattr(self, "_domain", None)
+        )
         logger.info("Purged %d materialized triples from %s", count, companion)
         return count
 
@@ -609,7 +613,7 @@ class LakebaseFlatStore(LakebaseBase):
         props = ""
         if self.adjacency_ready(table_name):
             adj_out, adj_in = self.adjacency_table_ids(table_name)
-            props = self.props_table_id(table_name)
+            props = self._props_table_for_read(table_name)
             sql = expand_and_fetch_sql(
                 flavor=self.sql_flavor(),
                 adj_out=self._sql_relation(adj_out),

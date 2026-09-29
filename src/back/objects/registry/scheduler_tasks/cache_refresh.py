@@ -40,12 +40,21 @@ def run(ctx: TaskContext) -> RunOutcome:
     if not getattr(store, "supports_adjacency", False):
         raise ValidationError(f"{backend} backend does not support cache refresh")
 
+    from back.core.graphdb.search_cache import (
+        CACHE_DISABLED_REFRESH_MESSAGE,
+        graph_cache_rebuild_allowed,
+        rebuild_graph_cache_if_enabled,
+    )
+
+    if not graph_cache_rebuild_allowed(ctx.domain):
+        raise ValidationError(CACHE_DISABLED_REFRESH_MESSAGE)
+
     graph_name = ctx.graph_name.strip()
     if not graph_name:
         raise ValidationError("Graph name is not configured")
 
     ctx.progress(70, f"Rebuilding graph indexes for {graph_name}")
-    store.rebuild_adjacency(graph_name)
+    rebuild_graph_cache_if_enabled(store, graph_name, ctx.domain)
     return RunOutcome(
         status="success",
         message="Graph cache refresh completed",

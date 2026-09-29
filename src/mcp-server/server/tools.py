@@ -471,6 +471,7 @@ def register_tools(mcp: FastMCP, session: MCPServerSession) -> None:
         search: Optional[str] = None,
         entity_type: Optional[str] = None,
         depth: int = MAX_DEPTH,
+        cache: Optional[bool] = None,
     ) -> str:
         """Search for an entity and return a full-text description.
 
@@ -505,6 +506,9 @@ def register_tools(mcp: FastMCP, session: MCPServerSession) -> None:
                 case-insensitive). Example: ``"Customer"``, ``"Order"``.
             depth: How many hops to traverse (1 = direct neighbors only,
                 default 1, max 10).
+            cache: If true, require search-cache companions. If false, read
+                the live triple store. Omit to use the domain Search cache
+                setting.
 
         Returns:
             A full-text description of the matching entities, their
@@ -534,16 +538,24 @@ def register_tools(mcp: FastMCP, session: MCPServerSession) -> None:
             params["search"] = search
         if entity_type:
             params["entity_type"] = entity_type
+        if cache is not None:
+            params["cache"] = str(cache).lower()
 
         async with session.client() as client:
             data = await _http._get(client, API_V1_DT_TRIPLES_FIND, params=params)
 
-        return _format_find_response(
+        formatted = _format_find_response(
             data,
             session.label_or_local,
             class_actions=session.class_actions,
             context_policy=session.active_context_policy(),
         )
+        if cache is False and not data.get("cache_used", True):
+            formatted = (
+                formatted
+                + "\n\nRead live triple store (search cache disabled for this call)."
+            )
+        return formatted
 
     @mcp.tool()
     async def get_status() -> str:

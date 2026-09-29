@@ -316,6 +316,9 @@ async function saveDomainInfo() {
                 ? neo4jDbEl.value : '',
             lakehouse_materialization: (graphBackendEl && graphBackendEl.value === 'databricks' && materializationEl)
                 ? materializationEl.value : 'view',
+            graph_cache_enabled: (graphBackendEl && (graphBackendEl.value === 'databricks' || graphBackendEl.value === 'lakebase'))
+                ? ((document.getElementById('domainGraphCacheEnabled') || {}).checked !== false)
+                : undefined,
         };
     
     try {

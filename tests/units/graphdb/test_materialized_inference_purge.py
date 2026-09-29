@@ -1,5 +1,6 @@
 """Source-preserving purge contracts for generated graph companions."""
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -91,6 +92,30 @@ def test_lakebase_counts_and_truncates_only_app_companion():
     store.count_triples.assert_called_once_with("g_sales_v3__app")
     truncate.assert_called_once_with(cursor, "g_sales_v3__app")
     store.rebuild_adjacency.assert_called_once_with("sales_V3")
+
+
+def test_lakebase_purge_skips_rebuild_when_search_cache_disabled():
+    store = object.__new__(LakebaseFlatStore)
+    store._sync_mode = "app_managed"
+    store._domain = SimpleNamespace(info={"graph_cache_enabled": False})
+    store.count_triples = MagicMock(return_value=9)
+    store.rebuild_adjacency = MagicMock()
+    cursor = MagicMock()
+    cursor_context = MagicMock()
+    cursor_context.__enter__.return_value = cursor
+    cursor_context.__exit__.return_value = False
+    store._cursor = MagicMock(return_value=cursor_context)
+
+    with (
+        patch.object(store, "companion_phy", return_value="g_sales_v3__app"),
+        patch(
+            "back.core.graphdb.lakebase.LakebaseFlatStore."
+            "_companion_ddl.truncate_companion"
+        ),
+    ):
+        assert store.purge_materialized_triples("sales_V3") == 9
+
+    store.rebuild_adjacency.assert_not_called()
 
 
 def test_lakebase_purge_surfaces_adjacency_rebuild_failure():

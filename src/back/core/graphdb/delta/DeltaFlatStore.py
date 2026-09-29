@@ -374,7 +374,9 @@ class DeltaFlatStore(GraphDBBackend):
         inferred = self._writable_table_fqn(table_name)
         count = self.count_triples(inferred)
         materialize.truncate_table(self._client, inferred)
-        self.rebuild_adjacency(table_name)
+        from back.core.graphdb.search_cache import rebuild_graph_cache_if_enabled
+
+        rebuild_graph_cache_if_enabled(self, table_name, self._domain)
         logger.info("Purged %d materialized triples from %s", count, inferred)
         return count
 
@@ -522,7 +524,7 @@ class DeltaFlatStore(GraphDBBackend):
         props = ""
         if self.adjacency_ready(table_name):
             adj_out, adj_in = self.adjacency_table_ids(table_name)
-            props = self.props_table_id(table_name)
+            props = self._props_table_for_read(table_name)
             sql = expand_and_fetch_sql(
                 flavor=self.sql_flavor(),
                 adj_out=self._sql_relation(adj_out),

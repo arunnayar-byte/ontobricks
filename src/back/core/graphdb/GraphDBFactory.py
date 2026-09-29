@@ -492,7 +492,7 @@ class GraphDBFactory:
                 sync_mode = SYNC_MODE_APP
 
         try:
-            return LakebaseFlatStore(
+            store = LakebaseFlatStore(
                 auth,
                 schema=schema,
                 database_override=database_override,
@@ -503,6 +503,8 @@ class GraphDBFactory:
                 sync_uc_schema=sync_uc_schema,
                 synced_manager=synced_manager,
             )
+            store._domain = domain
+            return store
         except Exception as e:
             logger.exception("Failed to create Lakebase graph store: %s", e)
             return None

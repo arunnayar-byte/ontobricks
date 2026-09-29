@@ -47,6 +47,8 @@ class GraphDBBackend(ABC):
     supports_adjacency = False
     supports_entity_search = False
     supports_props = False
+    # auto | force_on | force_off — see back.core.graphdb.search_cache
+    _search_cache_mode = "auto"
 
     # ------------------------------------------------------------------
     # Core abstract methods
@@ -722,7 +724,7 @@ class GraphDBBackend(ABC):
             f"SELECT subject, predicate, object FROM {self._sql_relation(table_name)} "
             f"WHERE subject IN ({in_clause})"
         )
-        props = self.props_table_id(table_name) if self.supports_props else ""
+        props = self._props_table_for_read(table_name)
         if not props:
             return self.execute_query(fallback_sql)
         sql = (
@@ -756,7 +758,7 @@ class GraphDBBackend(ABC):
             escape=self._sql_escape,
         )
 
-        props = self.props_table_id(table_name) if self.supports_props else ""
+        props = self._props_table_for_read(table_name)
         if props:
             sql = props_page_sql(
                 payload_relation=self._sql_relation(props),
@@ -1007,7 +1009,7 @@ class GraphDBBackend(ABC):
         """Return Preview rows with URI, type URI, and label."""
         probe_limit = int(limit) if limit else 0
         search_table = ""
-        if self.supports_entity_search and probe_limit > 0:
+        if probe_limit > 0 and self.entity_search_ready(table_name):
             if is_asserted_only_relation(table_name):
                 search_table = self.entity_search_asserted_table_id(table_name)
             else:
@@ -1261,6 +1263,44 @@ class GraphDBBackend(ABC):
         """SQL dialect for adjacency helpers, or *None* when not applicable."""
         return None
 
+    def search_cache_mode(self) -> str:
+        """Return ``auto``, ``force_on``, or ``force_off`` for this request."""
+        return getattr(self, "_search_cache_mode", "auto") or "auto"
+
+    def set_search_cache_mode(self, mode: str) -> None:
+        """Pin companion usage for the lifetime of this store instance."""
+        if mode not in ("auto", "force_on", "force_off"):
+            from back.core.errors import ValidationError
+
+            raise ValidationError("Invalid search cache mode")
+        self._search_cache_mode = mode
+
+    def _raise_if_force_on_missing(self, ready: bool) -> None:
+        if ready or self.search_cache_mode() != "force_on":
+            return
+        from back.core.errors import ValidationError
+        from back.core.graphdb.search_cache import CACHE_MISSING_MESSAGE
+
+        raise ValidationError(CACHE_MISSING_MESSAGE)
+
+    def _props_table_for_read(self, table_name: str) -> str:
+        """Property companion id, or ``\"\"`` when this request must use SPO."""
+        mode = self.search_cache_mode()
+        if mode == "force_off" or not self.supports_props:
+            if mode == "force_on" and not self.supports_props:
+                from back.core.errors import ValidationError
+                from back.core.graphdb.search_cache import CACHE_BACKEND_MESSAGE
+
+                raise ValidationError(CACHE_BACKEND_MESSAGE)
+            return ""
+        props = self.props_table_id(table_name)
+        if not props:
+            self._raise_if_force_on_missing(False)
+            return ""
+        if mode == "force_on" and not self.table_exists(props):
+            self._raise_if_force_on_missing(False)
+        return props
+
     def adjacency_table_ids(self, table_name: str) -> tuple[str, str]:
         """Return ``(adj_out, adj_in)`` table identifiers for *table_name*."""
         return ("", "")
@@ -1274,12 +1314,19 @@ class GraphDBBackend(ABC):
 
     def adjacency_ready(self, table_name: str) -> bool:
         """Whether adjacency tables exist and neighbour expansion can use them."""
+        mode = self.search_cache_mode()
+        if mode == "force_off":
+            return False
         if not self.supports_adjacency:
+            self._raise_if_force_on_missing(False)
             return False
         adj_out, adj_in = self.adjacency_table_ids(table_name)
         if not adj_out or not adj_in:
+            self._raise_if_force_on_missing(False)
             return False
-        return self.table_exists(adj_out) and self.table_exists(adj_in)
+        ready = self.table_exists(adj_out) and self.table_exists(adj_in)
+        self._raise_if_force_on_missing(ready)
+        return ready
 
     def entity_search_table_id(self, table_name: str) -> str:
         """Return the union entity-search table identifier for *table_name*."""
@@ -1295,13 +1342,19 @@ class GraphDBBackend(ABC):
 
     def entity_search_ready(self, table_name: str) -> bool:
         """Whether Preview can use the matching entity-search snapshot."""
+        mode = self.search_cache_mode()
+        if mode == "force_off":
+            return False
         if not self.supports_entity_search:
+            self._raise_if_force_on_missing(False)
             return False
         if is_asserted_only_relation(table_name):
             search_table = self.entity_search_asserted_table_id(table_name)
         else:
             search_table = self.entity_search_table_id(table_name)
-        return bool(search_table) and self.table_exists(search_table)
+        ready = bool(search_table) and self.table_exists(search_table)
+        self._raise_if_force_on_missing(ready)
+        return ready
 
     # ------------------------------------------------------------------
     # Capability flags — reasoning engines use these instead of isinstance

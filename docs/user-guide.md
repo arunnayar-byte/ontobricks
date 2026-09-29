@@ -1132,6 +1132,7 @@ cohort operations.
 |-------|-------------|
 | **Backend** | Select the Graph DB engine for this domain (`lakebase`, `databricks` / Lakehouse, or `neo4j`). Build always also creates the Unity Catalog triple-store family below. |
 | **Access type** | Lakehouse only. `Views only` (default) makes `…_data` a pass-through view over the gateway — nothing is duplicated. `Materialized - Faster but needs refresh` copies the mapped triples into `…_data` at build time. See [Materialization modes](#materialization-modes-lakehouse). |
+| **Search cache** | Lakehouse and Lakebase. On by default. Materializes adjacency, entity-search, and property indexes used by Explorer, GraphQL lists, and MCP `describe_entity`. Turn off to always read the live triple relation (Lakehouse Views only then hits mapping SQL). Re-enabling does not reuse a stale snapshot — Build or **Refresh cache** is required first (`pending_refresh`). Request `cache=true`/`false` on find, filter, GraphQL, and MCP overrides the switch. |
 | **Triple-Store** | Read-only. Base name in the domain's registry `catalog.schema`: `triplestore_<domain>_V<version>`. Build creates four related objects from that base (see below). |
 | **Graph DB table** | Read-only. For Lakebase, the flat triple table name is derived as `g_<domain>_v<version>` in the configured Postgres schema (default `ontobricks_graph`). |
 

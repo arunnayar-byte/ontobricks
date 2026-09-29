@@ -135,9 +135,8 @@ def test_entity_search_ready_requires_support_table_and_union_relation():
 
 def test_find_preview_seeds_uses_entity_search_when_ready():
     store = FakeStore()
-    with patch.object(store, "table_exists") as exists:
-        store.find_preview_seeds("g", value="ada", limit=501)
-    exists.assert_not_called()
+    store._search_ready = True
+    store.find_preview_seeds("g", value="ada", limit=501)
     assert len(store.queries) == 1
     assert "g_entity_search" in store.queries[0]
     assert "LIKE '%ada%'" in store.queries[0]
@@ -145,19 +144,16 @@ def test_find_preview_seeds_uses_entity_search_when_ready():
 
 def test_find_preview_seeds_falls_back_when_entity_table_is_missing():
     store = FakeStore()
-    with patch.object(
-        store,
-        "execute_query",
-        side_effect=[RuntimeError("TABLE_OR_VIEW_NOT_FOUND"), []],
-    ) as execute:
+    store._search_ready = False
+    with patch.object(store, "execute_query", return_value=[]) as execute:
         assert store.find_preview_seeds("g", value="ada", limit=2) == []
-    assert execute.call_count == 2
-    assert "g_entity_search" in execute.call_args_list[0].args[0]
-    assert "g_entity_search" not in execute.call_args_list[1].args[0]
+    assert execute.call_count == 1
+    assert "g_entity_search" not in execute.call_args_list[0].args[0]
 
 
 def test_find_preview_seeds_uses_asserted_index_for_asserted_relation():
     store = FakeStore()
+    store._search_asserted_ready = True
     store.find_preview_seeds("g_data", value="ada", limit=2)
     assert len(store.queries) == 1
     assert "g_entity_search_asserted" in store.queries[0]
@@ -167,6 +163,7 @@ def test_find_preview_seeds_uses_asserted_index_for_asserted_relation():
 
 def test_find_preview_seeds_sorts_index_rows():
     store = FakeStore()
+    store._search_ready = True
     rows = [
         {"uri": "u2", "type_uri": "T", "label": "b"},
         {"uri": "u1", "type_uri": "T", "label": "a"},

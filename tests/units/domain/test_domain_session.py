@@ -29,6 +29,11 @@ class TestGetEmptyDomain:
         data = get_empty_domain()
         assert data["domain"]["info"]["llm_endpoint_kind"] == ""
 
+    def test_default_search_cache_is_on_and_pending(self):
+        info = get_empty_domain()["domain"]["info"]
+        assert info["graph_cache_enabled"] is True
+        assert info["graph_cache_state"] == "pending_refresh"
+
     def test_default_registry(self):
         data = get_empty_domain()
         reg = data["settings"]["registry"]
@@ -518,6 +523,40 @@ class TestExportImport:
         """The Information picker defaults to Views only for a brand-new domain."""
         assert domain_session.info["lakehouse_materialization"] == "view"
 
+    def test_new_session_search_cache_pending_until_rebuild(self, domain_session):
+        assert domain_session.info["graph_cache_enabled"] is True
+        assert domain_session.info["graph_cache_state"] == "pending_refresh"
+
+    def test_graph_cache_round_trip(self, domain_session):
+        domain_session.info["graph_cache_enabled"] = False
+        domain_session.info["graph_cache_state"] = "disabled"
+        export = domain_session.export_for_save()
+        assert export["info"]["graph_cache_enabled"] is False
+        assert export["info"]["graph_cache_state"] == "disabled"
+        domain_session.reset()
+        domain_session.import_from_file(export)
+        assert domain_session.info["graph_cache_enabled"] is False
+        assert domain_session.info["graph_cache_state"] == "disabled"
+
+    def test_legacy_import_enables_ready_cache(self, domain_session):
+        domain_data = {
+            "info": {"name": "Legacy", "graph_backend": "lakebase"},
+            "versions": {
+                "1": {
+                    "ontology": {
+                        "name": "O", "base_uri": "http://x#", "classes": [],
+                        "properties": [], "constraints": [], "swrl_rules": [],
+                        "axioms": [], "expressions": [],
+                    },
+                    "assignment": {"entities": [], "relationships": []},
+                    "design_layout": {"views": {}, "map": {}},
+                }
+            },
+        }
+        domain_session.import_from_file(domain_data)
+        assert domain_session.info["graph_cache_enabled"] is True
+        assert domain_session.info["graph_cache_state"] == "ready"
+
     def test_lakehouse_materialization_defaults_to_table_on_import(self, domain_session):
         """A domain exported before the option existed keeps materialising."""
         domain_data = {
@@ -558,6 +597,7 @@ class TestExportImport:
         assert "neo4j_database" not in domain_session.info or not domain_session.info.get(
             "neo4j_database"
         )
+
     def test_import_from_file(self, domain_session):
         domain_data = {
             "info": {"name": "Imported", "description": "Test import"},

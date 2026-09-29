@@ -70,6 +70,31 @@ function toggleLakehouseMaterializationSection() {
     section.classList.toggle('d-none', backend !== 'databricks');
 }
 
+function toggleSearchCacheSection() {
+    const backend = (document.getElementById('domainGraphBackend') || {}).value;
+    const section = document.getElementById('searchCacheSection');
+    if (!section) return;
+    const show = backend === 'databricks' || backend === 'lakebase';
+    section.classList.toggle('d-none', !show);
+}
+
+function refreshSearchCacheStatusLine(state) {
+    const line = document.getElementById('searchCacheStatusLine');
+    const enabledEl = document.getElementById('domainGraphCacheEnabled');
+    if (!line || !enabledEl) return;
+    const enabled = enabledEl.checked;
+    const resolved = state || enabledEl.dataset.cacheState || 'pending_refresh';
+    if (!enabled) {
+        line.textContent = 'Off — live reads';
+        return;
+    }
+    if (resolved === 'ready') {
+        line.textContent = 'On — using cached indexes';
+        return;
+    }
+    line.textContent = 'On — rebuild or Refresh cache required (live reads until then)';
+}
+
 // A "No Backend" domain is ontology-only: every graph MCP tool is unchecked
 // and locked, and the explanatory notice is revealed. Switching back to a real
 // backend re-enables (and re-checks) the graph tools to their default state.
@@ -441,6 +466,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             graphBackendEl.addEventListener('change', refreshDtNamesFromForm);
             graphBackendEl.addEventListener('change', syncNeo4jConnectionSection);
             graphBackendEl.addEventListener('change', toggleLakehouseMaterializationSection);
+            graphBackendEl.addEventListener('change', toggleSearchCacheSection);
             graphBackendEl.addEventListener('change', applyGraphlessConstraints);
             graphBackendEl.addEventListener('change', () => {
                 graphBackendEl.dataset.userEdited = '1';
@@ -457,9 +483,17 @@ document.addEventListener('DOMContentLoaded', async function() {
                 materializationElInit.dataset.userEdited = '1';
             });
         }
+        const cacheElInit = document.getElementById('domainGraphCacheEnabled');
+        if (cacheElInit) {
+            cacheElInit.addEventListener('change', () => {
+                cacheElInit.dataset.userEdited = '1';
+                refreshSearchCacheStatusLine();
+            });
+        }
         initGraphBackendCards();
         syncNeo4jConnectionSection();
         toggleLakehouseMaterializationSection();
+        toggleSearchCacheSection();
         applyGraphlessConstraints();
         const refreshDbBtn = document.getElementById('btnRefreshNeo4jDatabases');
         if (refreshDbBtn) {
@@ -532,8 +566,20 @@ document.addEventListener('DOMContentLoaded', async function() {
             // edited the field: it reads the select's *current* value first
             // (see `_loadNeo4jConnectionOptions`) and only falls back to
             // `dataset.savedValue` when the select has nothing of its own.
+            const cacheEl = document.getElementById('domainGraphCacheEnabled');
+            if (cacheEl && !cacheEl.dataset.userEdited && infoData.info) {
+                if (typeof infoData.info.graph_cache_enabled === 'boolean') {
+                    cacheEl.checked = infoData.info.graph_cache_enabled;
+                    cacheEl.dataset.savedValue = infoData.info.graph_cache_enabled ? 'true' : 'false';
+                }
+                if (infoData.info.graph_cache_state) {
+                    cacheEl.dataset.cacheState = infoData.info.graph_cache_state;
+                }
+            }
             syncNeo4jConnectionSection();
             toggleLakehouseMaterializationSection();
+            toggleSearchCacheSection();
+            refreshSearchCacheStatusLine();
             applyGraphlessConstraints();
         }
 

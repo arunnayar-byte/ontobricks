@@ -315,6 +315,31 @@
                             </div>
                         </div>
 
+                        <!-- Search cache (Lakehouse + Lakebase companions) -->
+                        <div class="mb-4 {% if (domain.graph_backend or 'lakebase') not in ['databricks', 'lakebase'] %}d-none{% endif %}"
+                             id="searchCacheSection">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <label class="form-label fw-semibold mb-0" for="domainGraphCacheEnabled">
+                                    <i class="bi bi-lightning-charge me-1"></i> Search cache
+                                </label>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input domain-editable" type="checkbox"
+                                           id="domainGraphCacheEnabled"
+                                           {% if domain.graph_cache_enabled is not defined or domain.graph_cache_enabled %}checked{% endif %}
+                                           data-saved-value="{{ 'true' if (domain.graph_cache_enabled is not defined or domain.graph_cache_enabled) else 'false' }}">
+                                    <label class="form-check-label" for="domainGraphCacheEnabled">Enabled</label>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Materialized indexes (adjacency, entity-search, properties) speed
+                                Explorer Preview, expansion, GraphQL lists, and MCP
+                                <code>describe_entity</code>. Turn off to always read the live
+                                triple relation — Lakehouse Views only then hits source mapping SQL.
+                            </small>
+                            <div class="small mt-2" id="searchCacheStatusLine"></div>
+                        </div>
+
                         <!-- Neo4j connection selector (shown only when backend = neo4j) -->
                         <div class="mb-4 {% if domain.graph_backend != 'neo4j' %}d-none{% endif %}" id="neo4jDatabaseSection">
                             <label for="domainNeo4jDatabase" class="form-label fw-semibold">

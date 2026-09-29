@@ -39,6 +39,10 @@ rebuild — this is a full snapshot replacement, **not** an incremental refresh.
 Build and **Refresh cache** both trigger the same `rebuild_adjacency` backend
 operation; Refresh cache is a lightweight alternative when the underlying source
 data has not changed and only the indexes need to be brought up to date.
+**Domain → Information → Backend → Search cache** skips that rebuild when
+off; turning the switch back on leaves the domain in `pending_refresh` until
+the next successful rebuild (live SPO until then). `cache=true` on a read
+requires the companions and returns 400 if they are missing.
 
 For Lakehouse (Delta) graphs, four or five companion tables are rebuilt
 concurrently using a `ThreadPoolExecutor(max_workers=min(5, N))` per rebuild

@@ -901,20 +901,15 @@ class _BuildPipeline:
         return True
 
     def _rebuild_adjacency_if_supported(self) -> None:
+        from back.core.graphdb.search_cache import rebuild_graph_cache_if_enabled
+
         if self.store is None:
-            return
-        if getattr(self.store, "supports_adjacency", False) is not True:
             return
         sql_flavor_fn = getattr(self.store, "sql_flavor", None)
         flavor = sql_flavor_fn() if callable(sql_flavor_fn) else None
         if flavor != "postgres":
             return
-        logger.info(
-            "[DT-BUILD %s] rebuilding adjacency tables for %s",
-            self.task_id,
-            self.graph_name,
-        )
-        self.store.rebuild_adjacency(self.graph_name)
+        rebuild_graph_cache_if_enabled(self.store, self.graph_name, self.domain)
 
     def _stream_triples_into_store(
         self,

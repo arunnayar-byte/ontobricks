@@ -194,6 +194,13 @@ class FindResponse(BaseModel):
     offset: int = Field(0, description="Offset used")
     entity_count: int = 0
     message: Optional[str] = None
+    cache_used: bool = Field(
+        False, description="Whether adjacency/entity-search companions were read"
+    )
+    cache_mode: str = Field(
+        "auto",
+        description="Resolved cache mode: auto, force_on, or force_off",
+    )
 
 
 class NodeContextDataset(BaseModel):
@@ -707,7 +714,9 @@ async def dt_build_progress(task_id: str):
     summary="Find entities and traverse relationships",
     description="Search for entities by type and/or label text, then traverse "
     "their relationships up to N levels deep (BFS graph walk). "
-    "Returns all triples discovered during traversal.",
+    "Returns all triples discovered during traversal. "
+    "Query param ``cache`` (true/false) overrides the domain Search cache "
+    "switch; omitted uses the domain policy.",
 )
 async def dt_triples_find(
     request: Request,
@@ -716,6 +725,11 @@ async def dt_triples_find(
     depth: int = 1,
     limit: int = 1000,
     offset: int = 0,
+    cache: Optional[str] = Query(
+        None,
+        description="true/false: force search companions on or off. "
+        "Omitted uses Domain → Information → Backend Search cache.",
+    ),
     domain_name: Optional[str] = Query(
         None,
         validation_alias=AliasChoices("domain_name", "project_name"),
@@ -759,6 +773,15 @@ async def dt_triples_find(
     if not store:
         raise ValidationError("Graph backend not configured")
 
+    from back.core.graphdb.search_cache import (
+        apply_search_cache_to_store,
+        parse_cache_param,
+        search_cache_usage,
+    )
+
+    request_cache = parse_cache_param(cache)
+    apply_search_cache_to_store(store, domain, request_cache)
+
     table = effective_graph_query_table(domain, settings, store=store)
     if not table:
         raise ValidationError("Graph name not configured")
@@ -774,12 +797,16 @@ async def dt_triples_find(
             offset=offset,
         )
         if result.get("message") and not result.get("triples"):
+            mode, used = search_cache_usage(store, table)
             return FindResponse(
                 success=True,
                 seed_count=0,
                 depth=depth,
                 message=result["message"],
+                cache_used=used,
+                cache_mode=mode,
             )
+        mode, used = search_cache_usage(store, table)
         return FindResponse(
             success=True,
             seed_count=result["seed_count"],
@@ -798,6 +825,8 @@ async def dt_triples_find(
             limit=limit,
             offset=offset,
             entity_count=result["entity_count"],
+            cache_used=used,
+            cache_mode=mode,
         )
 
     try:
@@ -815,6 +844,8 @@ async def dt_triples_find(
             (time.perf_counter() - t0) * 1000,
         )
         return resp
+    except (ValidationError, InfrastructureError, NotFoundError):
+        raise
     except Exception as e:
         logger.exception("dt_triples_find failed: %s", e)
         raise InfrastructureError("Triple search failed", detail=str(e)) from e

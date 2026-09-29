@@ -96,6 +96,11 @@ def get_empty_domain() -> Dict[str, Any]:
                 # New domains default to view; missing values on import still
                 # normalise to table so legacy Lakehouse domains keep a copy.
                 "lakehouse_materialization": "view",
+                # Search companions (adj / entity-search / props). On until
+                # the operator turns the Backend switch off. New domains stay
+                # pending_refresh until the first successful rebuild.
+                "graph_cache_enabled": True,
+                "graph_cache_state": "pending_refresh",
             },
             "triplestore": {
                 "stats": {},
@@ -1431,6 +1436,11 @@ class DomainSession:
             normalize_graph_backend,
             normalize_lakehouse_materialization,
         )
+        from back.core.graphdb.search_cache import (
+            GRAPH_CACHE_STATE_READY,
+            normalize_graph_cache_enabled,
+            normalize_graph_cache_state,
+        )
 
         info_export = {
             "name": self._data["domain"]["info"].get("name", "NewDomain"),
@@ -1456,6 +1466,16 @@ class DomainSession:
             ).strip(),
             "lakehouse_materialization": normalize_lakehouse_materialization(
                 self._data["domain"]["info"].get("lakehouse_materialization")
+            ),
+            "graph_cache_enabled": normalize_graph_cache_enabled(
+                self._data["domain"]["info"].get("graph_cache_enabled")
+            ),
+            "graph_cache_state": normalize_graph_cache_state(
+                self._data["domain"]["info"].get("graph_cache_state"),
+                enabled=normalize_graph_cache_enabled(
+                    self._data["domain"]["info"].get("graph_cache_enabled")
+                ),
+                default_when_missing=GRAPH_CACHE_STATE_READY,
             ),
             "last_update": self._data["domain"].get("last_update", ""),
             "last_build": self._data["domain"].get("last_build", ""),
@@ -1556,6 +1576,11 @@ class DomainSession:
                 normalize_graph_backend,
                 normalize_lakehouse_materialization,
             )
+            from back.core.graphdb.search_cache import (
+                GRAPH_CACHE_STATE_READY,
+                normalize_graph_cache_enabled,
+                normalize_graph_cache_state,
+            )
 
             info = data["info"]
             self._data["domain"]["info"]["name"] = info.get("name", "NewDomain")
@@ -1582,6 +1607,19 @@ class DomainSession:
             self._data["domain"]["info"]["lakehouse_materialization"] = (
                 normalize_lakehouse_materialization(
                     info.get("lakehouse_materialization")
+                )
+            )
+            self._data["domain"]["info"]["graph_cache_enabled"] = (
+                normalize_graph_cache_enabled(
+                    info.get("graph_cache_enabled"),
+                    default=True,
+                )
+            )
+            self._data["domain"]["info"]["graph_cache_state"] = (
+                normalize_graph_cache_state(
+                    info.get("graph_cache_state"),
+                    enabled=self._data["domain"]["info"]["graph_cache_enabled"],
+                    default_when_missing=GRAPH_CACHE_STATE_READY,
                 )
             )
             # Drop legacy domain DB override if present on import.

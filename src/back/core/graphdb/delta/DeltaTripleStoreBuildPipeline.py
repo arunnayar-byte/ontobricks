@@ -365,10 +365,12 @@ class DeltaTripleStoreBuildPipeline:
         source = getattr(self, "graph_view", "") or self.data_table
         if not source:
             return
+        from back.core.graphdb.search_cache import rebuild_graph_cache_if_enabled
+
         store = DeltaFlatStore(
             self.source_client, domain=self.domain, settings=self.settings
         )
-        store.rebuild_adjacency(source)
+        rebuild_graph_cache_if_enabled(store, source, self.domain)
 
     def _complete_task(self) -> None:
         duration = time.time() - self.start_time

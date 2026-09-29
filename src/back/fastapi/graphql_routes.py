@@ -363,12 +363,18 @@ async def graphql_playground(
     "/{domain_name}",
     summary="Execute GraphQL query",
     description="Execute a GraphQL query against a domain's knowledge graph. "
-    "The schema is auto-generated from the domain's ontology.",
+    "The schema is auto-generated from the domain's ontology. "
+    "Query param ``cache`` (true/false) overrides the domain Search cache switch.",
 )
 async def graphql_execute(
     request: Request,
     domain_name: str,
     body: GraphQLRequest,
+    cache: Optional[str] = Query(
+        None,
+        description="true/false: force search companions on or off. "
+        "Omitted uses Domain → Information → Backend Search cache.",
+    ),
     session_mgr: SessionManager = Depends(get_session_manager),
     settings: Settings = Depends(get_settings),
 ):
@@ -378,6 +384,14 @@ async def graphql_execute(
     )
     assert_public_graph_read(request, domain, settings)
     schema, context = _get_schema_and_context(domain, settings)
+    store = context.get("triplestore")
+    if store is not None:
+        from back.core.graphdb.search_cache import (
+            apply_search_cache_to_store,
+            parse_cache_param,
+        )
+
+        apply_search_cache_to_store(store, domain, parse_cache_param(cache))
 
     if body.depth is not None:
         context["depth"] = min(max(body.depth, 1), MAX_DEPTH)
