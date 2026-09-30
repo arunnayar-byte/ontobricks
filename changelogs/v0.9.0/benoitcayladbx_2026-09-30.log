@@ -153,3 +153,51 @@ Modified files:
 - changelogs/v0.9.0/benoitcayladbx_2026-09-30.log
 
 Tests: uv run --frozen pytest -q -m "not scenario" → 7176 passed, 315 skipped, 6 deselected, 1 xfailed in 52.75s. make scenario-campaign → 4 passed, 2 skipped (full_lifecycle + scenario 4 warehouse-in-pytest-process), exit 0 in 23m37s — scenario 3: 79 SHACL shapes; validation 13 passed.
+
+## Extract Class from Ontology.py and wrap Generate/json_views
+
+Context: Domain Settings, registry, DigitalTwin, and dtwin already used Fowler Extract Class. `Ontology` was still a Large Class (~2545 LOC / 64 methods) and `GenerateWorkflow` / `json_views` used public module-level functions (class-first miss). Split by capability; keep `Ontology.*` one-line delegators and Generate/json_views aliases.
+
+Changes:
+
+1. `src/back/objects/ontology/OntologyClassModel.py`
+   URI hygiene, class/property builders, completeness checks.
+2. `src/back/objects/ontology/OntologyEditor.py`
+   Editor save/CRUD, design-layout sync, mapping prune, URI diffs.
+3. `src/back/objects/ontology/OntologyImport.py`
+   OWL/RDFS ingest/merge/analyze, industry import, success payloads.
+4. `src/back/objects/ontology/OntologyOwl.py`
+   Parse/generate OWL, Turtle local-name cleanup, stats.
+5. `src/back/objects/ontology/OntologyRules.py`
+   SWRL/SHACL/constraint and rule-reference validation.
+6. `src/back/objects/ontology/OntologyGroups.py`
+   Entity-group CRUD (not Explorer Sigma groups).
+7. `src/back/objects/ontology/Ontology.py`
+   Facade: agents stay; other methods are one-line delegators.
+8. `src/back/objects/ontology/json_views.py`
+   `OntologyJsonViews` plus `get_ontology_*` aliases.
+9. `src/back/objects/ontology/GenerateWorkflow.py`
+   Public detect/review/complete/merge as class staticmethods; module aliases kept.
+10. `src/back/objects/ontology/__init__.py`
+    Re-export the new classes; keep GenerateWorkflow as the module.
+11. `docs/sphinx/api/app.objects.ontology.rst`
+    Automodule pages for the extracted classes.
+12. `docs/superpowers/plans/2026-09-29-god-class-extract.md`
+    Plan items 33–40.
+
+Modified files:
+- src/back/objects/ontology/Ontology.py
+- src/back/objects/ontology/OntologyClassModel.py
+- src/back/objects/ontology/OntologyEditor.py
+- src/back/objects/ontology/OntologyImport.py
+- src/back/objects/ontology/OntologyOwl.py
+- src/back/objects/ontology/OntologyRules.py
+- src/back/objects/ontology/OntologyGroups.py
+- src/back/objects/ontology/json_views.py
+- src/back/objects/ontology/GenerateWorkflow.py
+- src/back/objects/ontology/__init__.py
+- docs/sphinx/api/app.objects.ontology.rst
+- docs/superpowers/plans/2026-09-29-god-class-extract.md
+- changelogs/v0.9.0/benoitcayladbx_2026-09-30.log
+
+Tests: `uv run --frozen pytest -q tests/units/ontology tests/units/api/test_generate_routes.py tests/units/api/test_api_service.py` → 830 passed. `uv run --frozen pytest -q -m "not scenario"` → 7173 passed, 3 failed (local `MCP_APP_NAME` / `DATABRICKS_CONFIG_PROFILE=DEFAULT`; those 3 pass with the vars unset), 315 skipped, 6 deselected, 1 xfailed in 59.93s. Same 7176 as the prior green run when env is clean.

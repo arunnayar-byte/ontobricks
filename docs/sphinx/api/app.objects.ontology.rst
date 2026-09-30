@@ -1,10 +1,66 @@
 ``back.objects.ontology`` -- Ontology management (domain)
 =========================================================
 
-Ontology class
---------------
+Ontology facade
+---------------
 
 .. automodule:: back.objects.ontology.Ontology
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+OntologyClassModel class
+------------------------
+
+.. automodule:: back.objects.ontology.OntologyClassModel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+OntologyEditor class
+--------------------
+
+.. automodule:: back.objects.ontology.OntologyEditor
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+OntologyImport class
+--------------------
+
+.. automodule:: back.objects.ontology.OntologyImport
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+OntologyOwl class
+-----------------
+
+.. automodule:: back.objects.ontology.OntologyOwl
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+OntologyRules class
+-------------------
+
+.. automodule:: back.objects.ontology.OntologyRules
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+OntologyGroups class
+--------------------
+
+.. automodule:: back.objects.ontology.OntologyGroups
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+OntologyJsonViews class
+-----------------------
+
+.. automodule:: back.objects.ontology.json_views
    :members:
    :undoc-members:
    :show-inheritance:
