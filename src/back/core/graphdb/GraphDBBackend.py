@@ -1267,6 +1267,24 @@ class GraphDBBackend(ABC):
         """Return ``auto``, ``force_on``, or ``force_off`` for this request."""
         return getattr(self, "_search_cache_mode", "auto") or "auto"
 
+    def _companion_tables_exist(self, *table_names: str) -> bool:
+        """Return whether every companion exists.
+
+        ``auto`` treats a failed existence probe as ``False`` so Explorer,
+        Graph Chat, and MCP fall back to the live SPO relation. ``force_on``
+        still surfaces the probe error (or the missing-cache ValidationError).
+        """
+        try:
+            return all(self.table_exists(name) for name in table_names if name)
+        except Exception as exc:  # noqa: BLE001
+            if self.search_cache_mode() == "force_on":
+                raise
+            logger.info(
+                "Companion existence probe failed; using live graph reads: %s",
+                exc,
+            )
+            return False
+
     def set_search_cache_mode(self, mode: str) -> None:
         """Pin companion usage for the lifetime of this store instance."""
         if mode not in ("auto", "force_on", "force_off"):
@@ -1324,7 +1342,7 @@ class GraphDBBackend(ABC):
         if not adj_out or not adj_in:
             self._raise_if_force_on_missing(False)
             return False
-        ready = self.table_exists(adj_out) and self.table_exists(adj_in)
+        ready = self._companion_tables_exist(adj_out, adj_in)
         self._raise_if_force_on_missing(ready)
         return ready
 
@@ -1352,7 +1370,7 @@ class GraphDBBackend(ABC):
             search_table = self.entity_search_asserted_table_id(table_name)
         else:
             search_table = self.entity_search_table_id(table_name)
-        ready = bool(search_table) and self.table_exists(search_table)
+        ready = bool(search_table) and self._companion_tables_exist(search_table)
         self._raise_if_force_on_missing(ready)
         return ready
 

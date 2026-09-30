@@ -825,6 +825,26 @@ document.addEventListener('DOMContentLoaded', function () {
         createAction?.classList.toggle('d-none', targetsExisting);
     }
 
+    function syncImportPickState() {
+        const rows = document.querySelectorAll('#importObxTableBody .import-obx-row');
+        const selectAll = document.getElementById('importObxSelectAll');
+        const btn = document.getElementById('btnImportObxConfirm');
+        let checkedCount = 0;
+        rows.forEach(row => {
+            const picked = !!row.querySelector('.import-obx-pick')?.checked;
+            if (picked) checkedCount += 1;
+            row.classList.toggle('table-secondary', !picked);
+            row.querySelectorAll('.import-obx-name, input[type="radio"]').forEach(el => {
+                el.disabled = !picked;
+            });
+        });
+        if (selectAll) {
+            selectAll.checked = rows.length > 0 && checkedCount === rows.length;
+            selectAll.indeterminate = checkedCount > 0 && checkedCount < rows.length;
+        }
+        if (btn) btn.disabled = checkedCount === 0;
+    }
+
     function openImportObxModal() {
         const modalEl = document.getElementById('importObxModal');
         if (!modalEl) return;
@@ -832,15 +852,25 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('importObxStep2').classList.add('d-none');
         document.getElementById('importObxFile').value = '';
         document.getElementById('importObxPreviewError').classList.add('d-none');
+        document.getElementById('importObxPreviewBusy')?.classList.add('d-none');
         document.getElementById('btnImportObxConfirm').classList.add('d-none');
+        document.getElementById('btnImportObxConfirm').disabled = false;
+        const selectAll = document.getElementById('importObxSelectAll');
+        if (selectAll) {
+            selectAll.checked = true;
+            selectAll.indeterminate = false;
+        }
         showStackedModal(modalEl);
     }
 
     document.getElementById('importObxFile')?.addEventListener('change', async (e) => {
         const file = e.target.files?.[0];
         const errEl = document.getElementById('importObxPreviewError');
+        const busyEl = document.getElementById('importObxPreviewBusy');
         if (!file) return;
         errEl.classList.add('d-none');
+        busyEl?.classList.remove('d-none');
+        e.target.disabled = true;
         try {
             const form = new FormData();
             form.append('file', file);
@@ -859,6 +889,9 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (err) {
             errEl.textContent = 'Network error: ' + err.message;
             errEl.classList.remove('d-none');
+        } finally {
+            busyEl?.classList.add('d-none');
+            e.target.disabled = false;
         }
     });
 
@@ -898,6 +931,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 : '<span class="small text-muted import-obx-create-action">' +
                       '<i class="bi bi-plus-circle me-1"></i>Create new</span>';
             return '<tr class="import-obx-row" data-name="' + escapeHtml(d.name) + '" data-exists="' + (d.exists ? '1' : '0') + '">' +
+                '<td class="text-center"><input type="checkbox" class="form-check-input import-obx-pick" checked aria-label="Import this domain"></td>' +
                 '<td><i class="bi bi-box me-1 text-primary"></i>' + escapeHtml(d.name) +
                     (d.original_name && d.original_name !== d.name
                         ? '<div class="small text-muted">from <code>' + escapeHtml(d.original_name) + '</code></div>'
@@ -922,8 +956,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 input.classList.remove('is-invalid');
                 syncImportActionControls(row);
             });
+            row.querySelector('.import-obx-pick')?.addEventListener('change', syncImportPickState);
             syncImportActionControls(row);
         });
+
+        const selectAll = document.getElementById('importObxSelectAll');
+        if (selectAll) {
+            selectAll.checked = true;
+            selectAll.indeterminate = false;
+            selectAll.onchange = () => {
+                tbody.querySelectorAll('.import-obx-pick').forEach(cb => {
+                    cb.checked = selectAll.checked;
+                });
+                syncImportPickState();
+            };
+        }
+        syncImportPickState();
     }
 
     function actionRadio(rowIdx, value, label, checked, disabled) {
@@ -943,9 +991,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const targetFolders = new Set();
         let namesValid = true;
         document.querySelectorAll('#importObxTableBody .import-obx-row').forEach(row => {
+            const sourceFolder = row.dataset.name;
+            if (!row.querySelector('.import-obx-pick')?.checked) {
+                decisions.push({ name: sourceFolder, action: 'skip' });
+                return;
+            }
             const nameInput = row.querySelector('.import-obx-name');
             const importName = nameInput?.value.trim() || '';
-            const sourceFolder = row.dataset.name;
             const targetFolder = sanitizeImportFolder(importName);
             const duplicate = targetFolders.has(targetFolder);
             const valid = IMPORT_NAME_PATTERN.test(importName) && !duplicate;
@@ -972,6 +1024,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 decisions.push({ name: sourceFolder, action: 'overwrite' });
             }
         });
+
+        const selectedCount = document.querySelectorAll(
+            '#importObxTableBody .import-obx-pick:checked'
+        ).length;
+        if (!selectedCount) {
+            showNotification('Pick at least one domain to import', 'warning');
+            return;
+        }
 
         if (!namesValid) {
             showNotification(

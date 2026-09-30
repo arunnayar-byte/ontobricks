@@ -300,6 +300,10 @@
     min-width: 14rem;
 }
 
+.registry-th-import-obx-check {
+    width: 2.5rem;
+}
+
 .registry-th-import-obx-versions {
     width: 8rem;
 }

@@ -446,6 +446,20 @@ def test_sigmagraph_panel_uses_the_shared_compact_tab_rail():
     assert ".sg-panel-tabs .nav-link" not in css
 
 
+def test_sigmagraph_max_entities_matches_backend_clamp():
+    from back.objects.digitaltwin.GraphFilter import (
+        EXPLORER_MAX_ENTITIES_DEFAULT,
+        EXPLORER_MAX_ENTITIES_UI_MAX,
+    )
+
+    template = _read(SIGMAGRAPH_TEMPLATE)
+    select = template.split('id="sgMaxEntities"', 1)[1].split("</select>", 1)[0]
+    values = [int(v) for v in re.findall(r'<option value="(\d+)"', select)]
+    assert values
+    assert max(values) == EXPLORER_MAX_ENTITIES_UI_MAX
+    assert f'value="{EXPLORER_MAX_ENTITIES_DEFAULT}" selected' in select
+
+
 def test_mapping_designer_panels_use_the_shared_compact_tab_rail():
     script = _read(MAPPING_DESIGN_JS)
     assert script.count(

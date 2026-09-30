@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 import time
@@ -1421,7 +1422,13 @@ class Mapping:
         if session_path is None:
             return
         try:
-            if session_path.exists():
+            if session_ref is not None and isinstance(session_ref, dict) and (
+                session_ref.get("domain_data") or session_ref.get("project_data")
+            ):
+                # In-memory cache is newer than disk after background Generate
+                # complete: merging from the file would drop ontology.classes.
+                data = deepcopy(session_ref)
+            elif session_path.exists():
                 data = json.loads(session_path.read_text())
             else:
                 logger.warning(

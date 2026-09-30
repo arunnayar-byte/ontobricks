@@ -5,6 +5,12 @@ from unittest.mock import MagicMock
 import pytest
 
 from back.objects.digitaltwin.DigitalTwin import DigitalTwin
+from back.objects.digitaltwin.GraphFilter import (
+    EXPLORER_MAX_ENTITIES_DEFAULT,
+    EXPLORER_MAX_ENTITIES_MIN,
+    EXPLORER_MAX_ENTITIES_UI_MAX,
+    GraphFilter,
+)
 
 
 class OptimizedStore:
@@ -109,3 +115,19 @@ def test_filter_expand_does_not_retry_after_single_statement_failure():
         )
 
     store.expand_and_fetch_subgraph.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        (None, EXPLORER_MAX_ENTITIES_DEFAULT),
+        ("not-a-number", EXPLORER_MAX_ENTITIES_DEFAULT),
+        (5000, 5000),
+        ("5000", 5000),
+        (20_000, EXPLORER_MAX_ENTITIES_UI_MAX),
+        (50_000, EXPLORER_MAX_ENTITIES_UI_MAX),
+        (50, EXPLORER_MAX_ENTITIES_MIN),
+    ],
+)
+def test_clamp_max_entities_matches_explorer_ui(raw, expected):
+    assert GraphFilter.clamp_max_entities(raw) == expected

@@ -233,6 +233,35 @@ class TestExecuteQueryRetry:
         assert mock_connect.call_count == 1
         _sleep.assert_not_called()
 
+    @patch("databricks.sql.connect")
+    def test_retries_thrift_rejection_with_kernel(self, mock_connect, monkeypatch):
+        monkeypatch.delenv("DATABRICKS_APP_PORT", raising=False)
+        good_conn, mock_cursor = _make_connect_mock(
+            description=[("x",)], fetchall_rows=[(1,)]
+        )
+        mock_connect.side_effect = [
+            Exception(
+                "Lakehouse/RT is not supported for Thrift protocol. "
+                "Please update your Databricks SQL Driver version"
+            ),
+            good_conn,
+        ]
+        auth = DatabricksAuth(
+            host="https://h.databricks.com",
+            token="tok",
+            warehouse_id="wh-rt",
+            use_sea=False,
+        )
+        sw = SQLWarehouse(auth)
+        rows = sw.execute_query("SELECT 1")
+        assert rows == [{"x": 1}]
+        assert mock_connect.call_count == 2
+        assert mock_connect.call_args_list[0].kwargs.get("use_kernel") is None
+        assert mock_connect.call_args_list[1].kwargs.get("use_kernel") is True
+        assert auth.use_kernel is True
+        executed = [c.args[0] for c in mock_cursor.execute.call_args_list]
+        assert not any("STATEMENT_TIMEOUT" in q for q in executed)
+
     @patch("back.core.databricks.SQLWarehouse.time.sleep", return_value=None)
     @patch("databricks.sql.connect")
     def test_gives_up_after_max_attempts(self, mock_connect, _sleep, monkeypatch):

@@ -33,13 +33,15 @@ upgrade path if the format changes in future releases.
 ### Import
 
 1. Click **Import** on the Registry → Browse page.
-2. Select the `.obx` file.
-3. In the preview, review or change **Import as** for each domain. Names use
+2. Select the `.obx` file. A spinner shows while OntoBricks reads the archive.
+3. In the preview, uncheck any domain you do not want to import. Checked
+   domains are selected by default; the header checkbox toggles them all.
+4. Review or change **Import as** for each selected domain. Names use
    CamelCase alphanumeric syntax (for example, `ClaimsArchive`).
-4. When **Import as** targets an existing domain, choose **Skip** or
+5. When **Import as** targets an existing domain, choose **Skip** or
    **Overwrite**. When it differs from the source folder, Import creates a
    separate domain under the new name.
-5. Click **Import**.
+6. Click **Import**. A spinner shows on the button until the write finishes.
 
 Renamed imports regenerate the ontology base URI from the configured default
 and the new name. Ontology, mappings, settings, and the versions present in the

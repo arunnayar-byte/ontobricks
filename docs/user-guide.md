@@ -2232,6 +2232,7 @@ After sync, you can explore the triple store:
 Open **Explorer** in the sidebar to explore the graph viewer interactively:
 - **Find** specific entities by name, type, or URI — matching entities and their neighbors are highlighted
 - **Filter** by entity type, field, match type, and relationship depth
+- **Cap expansion** with the max-entities control (default 5 000, up to 20 000). The server uses the value you pick, including in Databricks Apps.
 - **Navigate** relationships — click an entity to see its attributes, values, and connected entities in the detail panel
 - **Toggle labels** for node and edge labels
 - **Hide orphans** to focus on connected entities

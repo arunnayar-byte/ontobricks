@@ -176,12 +176,76 @@ def test_find_preview_seeds_sorts_index_rows():
 
 def test_find_preview_seeds_does_not_swallow_index_query_failures():
     store = FakeStore()
+    store._search_ready = True
     with patch.object(
         store,
         "execute_query",
         side_effect=RuntimeError("permission denied"),
     ), pytest.raises(RuntimeError, match="permission denied"):
         store.find_preview_seeds("g", value="ada", limit=2)
+
+
+@pytest.mark.parametrize("flavor", ["postgres", "spark"])
+def test_auto_companion_probe_error_is_not_ready(flavor):
+    """Explorer/Chat/MCP must not die on a failed existence probe (auto mode)."""
+    store = FakeStore()
+    store.sql_flavor = lambda: flavor  # type: ignore[method-assign]
+    store.set_search_cache_mode("auto")
+
+    def boom(_name: str) -> bool:
+        raise RuntimeError(
+            "Lakehouse/RT is not supported for Thrift protocol. "
+            "Please update your Databricks SQL Driver version"
+        )
+
+    store.table_exists = boom  # type: ignore[method-assign]
+    assert store.entity_search_ready("g") is False
+    assert store.adjacency_ready("g") is False
+
+
+def test_force_on_companion_probe_error_still_raises():
+    store = FakeStore()
+    store.set_search_cache_mode("force_on")
+
+    def boom(_name: str) -> bool:
+        raise RuntimeError("permission denied")
+
+    store.table_exists = boom  # type: ignore[method-assign]
+    with pytest.raises(RuntimeError, match="permission denied"):
+        store.entity_search_ready("g")
+
+
+@pytest.mark.parametrize("flavor", ["postgres", "spark"])
+def test_find_preview_seeds_falls_back_when_existence_probe_raises(flavor):
+    store = FakeStore()
+    store.sql_flavor = lambda: flavor  # type: ignore[method-assign]
+    store.set_search_cache_mode("auto")
+
+    def boom(_name: str) -> bool:
+        raise RuntimeError("Lakehouse/RT is not supported for Thrift protocol")
+
+    store.table_exists = boom  # type: ignore[method-assign]
+    with patch.object(store, "execute_query", return_value=[]) as execute:
+        assert store.find_preview_seeds("g", value="ada", limit=2) == []
+    assert execute.call_count == 1
+    assert "g_entity_search" not in execute.call_args_list[0].args[0]
+
+
+@pytest.mark.parametrize("flavor", ["postgres", "spark"])
+def test_bfs_falls_back_to_spo_when_existence_probe_raises(flavor):
+    store = FakeStore()
+    store.sql_flavor = lambda: flavor  # type: ignore[method-assign]
+    store.set_search_cache_mode("auto")
+
+    def boom(_name: str) -> bool:
+        raise RuntimeError("Lakehouse/RT is not supported for Thrift protocol")
+
+    store.table_exists = boom  # type: ignore[method-assign]
+    store.bfs_traversal("g", " WHERE 1=1", 1, search="ada")
+    assert len(store.queries) == 1
+    assert "WITH RECURSIVE" in store.queries[0]
+    assert "g_entity_search" not in store.queries[0]
+    assert "g_adj_out" not in store.queries[0]
 
 
 class MinimalStore(GraphDBBackend):

@@ -148,7 +148,21 @@ class SQLWarehouse:
 
     def _new_connection(self):
         params = self._auth.get_sql_connection_params()
-        return sql.connect(**params)
+        try:
+            return sql.connect(**params)
+        except Exception as exc:
+            if params.get("use_kernel"):
+                raise
+            if "not supported for thrift" not in str(exc).lower():
+                raise
+            logger.warning(
+                "Warehouse rejected Thrift; reconnecting with native Kernel SEA: %s",
+                exc,
+            )
+            params = {**params, "use_kernel": True}
+            conn = sql.connect(**params)
+            self._auth.use_kernel = True
+            return conn
 
     @contextmanager
     def _borrow(self):
@@ -285,15 +299,18 @@ class SQLWarehouse:
             bounded = False
 
         def _work(conn) -> List[Dict[str, Any]]:
+            apply_timeout = bounded and not bool(
+                getattr(self._auth, "use_kernel", False)
+            )
             with conn.cursor() as cur:
-                if bounded:
+                if apply_timeout:
                     cur.execute(f"SET STATEMENT_TIMEOUT = {int(statement_timeout_s)}")
                 try:
                     cur.execute(query)
                     columns = [desc[0] for desc in cur.description]
                     return [dict(zip(columns, row)) for row in cur.fetchall()]
                 finally:
-                    if bounded:
+                    if apply_timeout:
                         # 0 disables the per-session bound (workspace default
                         # applies) so the recycled connection is unaffected.
                         # Guarded: if the query failed on a broken connection

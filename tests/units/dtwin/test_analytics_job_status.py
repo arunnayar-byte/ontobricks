@@ -221,13 +221,14 @@ class TestCauseOrdering:
 ROOT = Path(__file__).resolve().parents[3]
 PANEL = ROOT / "src/front/static/query/js/query-analytics.js"
 ROUTER = ROOT / "src/api/routers/internal/dtwin.py"
+STATS = ROOT / "src/back/objects/digitaltwin/TwinGraphStats.py"
 
 
 class TestTheReasonReachesTheBanner:
     """A reason computed and then dropped on the floor helps nobody."""
 
     def test_the_endpoint_returns_the_field(self):
-        assert '"analytics_job_blocked_reason": job_blocked_reason' in ROUTER.read_text()
+        assert '"analytics_job_blocked_reason": job_blocked_reason' in STATS.read_text()
 
     def test_the_panel_reads_it(self):
         assert "data.analytics_job_blocked_reason" in PANEL.read_text()
@@ -253,9 +254,9 @@ class TestStatsCacheDoesNotHideTheField:
     """A cache entry predating the field would mask a just-changed setting."""
 
     def test_a_payload_without_the_field_is_treated_as_stale(self):
-        router = ROUTER.read_text()
-        assert '"analytics_job_blocked_reason" in cached' in router
-        assert "has_kind and has_job_reason" in router
+        stats = STATS.read_text()
+        assert '"analytics_job_blocked_reason" in cached' in stats
+        assert "has_kind and has_job_reason" in stats
 
 
 class TestStoredResultsBackwardCompat:

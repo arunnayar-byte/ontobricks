@@ -1496,13 +1496,20 @@ class _BuildPipeline:
             )
 
     def _persist_last_build_to_registry(self) -> None:
-        """Write last_build to the registry domain_versions row.
+        """Stamp ``last_build`` on the registry row without rewriting JSONB.
 
         The session/UI build path stamps domain.last_build before the build
-        thread starts; the API path does not.  In both cases the timestamp
-        must reach the DB column so ReviewService.submit() can unblock the
-        Submit-for-Review gate.  Best-effort: a failure is logged but never
-        propagates.
+        thread starts; the API path does not. The timestamp must reach the
+        ``domain_versions.last_build`` column so ReviewService.submit() can
+        unblock the Submit-for-Review gate.
+
+        A full ``write_version`` here is unsafe: the worker's live session
+        can have empty ``ontology.classes`` (request-scoped DomainSession
+        after Generate/complete, or a snapshot that only carried mappings).
+        Rewriting the document would wipe a previously saved ontology while
+        keeping mappings — SHACL suggest then returns nothing.
+
+        Best-effort: a failure is logged but never propagates.
         """
         try:
             from back.objects.registry.RegistryService import RegistryService
@@ -1531,11 +1538,12 @@ class _BuildPipeline:
                 self.domain.last_build = datetime.now(timezone.utc).isoformat()
 
             svc = RegistryService.from_context(self.domain, self.settings)
-            domain_data = self.domain.export_for_save()
-            w_ok, w_msg = svc._store.write_version(folder, version, domain_data)
-            if w_ok:
+            ok, msg = svc._store.stamp_last_build(
+                folder, str(version), self.domain.last_build
+            )
+            if ok:
                 logger.info(
-                    "[DT-BUILD %s] persisted last_build=%s to registry "
+                    "[DT-BUILD %s] stamped last_build=%s in registry "
                     "(folder=%s version=%s)",
                     self.task_id,
                     self.domain.last_build,
@@ -1544,10 +1552,10 @@ class _BuildPipeline:
                 )
             else:
                 logger.error(
-                    "[DT-BUILD %s] write_version failed when persisting "
+                    "[DT-BUILD %s] stamp_last_build failed when persisting "
                     "last_build: %s",
                     self.task_id,
-                    w_msg,
+                    msg,
                 )
         except Exception as exc:  # noqa: BLE001
             logger.warning(

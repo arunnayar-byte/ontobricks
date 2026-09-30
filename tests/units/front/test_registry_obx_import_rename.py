@@ -50,3 +50,19 @@ def test_import_name_column_keeps_a_readable_width():
     assert ".registry-th-import-obx-name" in STYLES
     assert "min-width: 14rem;" in STYLES
     assert ".registry-th-import-obx-action {\n    width: 12rem;" in STYLES
+
+
+def test_import_preview_has_domain_checkboxes():
+    assert 'id="importObxSelectAll"' in TEMPLATE
+    assert 'class="form-check-input import-obx-pick"' in SCRIPT
+    assert "function syncImportPickState()" in SCRIPT
+    assert "action: 'skip'" in SCRIPT
+    assert "Pick at least one domain to import" in SCRIPT
+    assert "registry-th-import-obx-check" in TEMPLATE
+    assert ".registry-th-import-obx-check" in STYLES
+
+
+def test_import_preview_shows_spinner_while_reading_file():
+    assert 'id="importObxPreviewBusy"' in TEMPLATE
+    assert "spinner-border spinner-border-sm" in TEMPLATE
+    assert "importObxPreviewBusy" in SCRIPT
