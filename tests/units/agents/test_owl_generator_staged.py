@@ -439,6 +439,33 @@ class TestInferRelations:
         assert "cand-4" in result.rejection_reason
         assert mock_llm.call_count == 1
 
+    def test_existing_relations_are_shown_and_paraphrases_dropped(self):
+        draft = _draft(
+            anchors=[
+                GenerateEntity.locked_anchor("Payment", "Payment"),
+                GenerateEntity.locked_anchor("Contract", "Contract"),
+            ],
+            candidates=[GenerateEntity.new_candidate("Carrier", entity_id="cand-6")],
+        )
+        existing = [{"label": "settles", "domain": "Payment", "range": "Contract"}]
+        payload = (
+            '{"relations": ['
+            '{"label": "isSettledBy", "domain": "Contract", "range": "Payment"},'
+            '{"label": "carries", "domain": "cand-6", "range": "Contract"}]}'
+        )
+        with patch.object(staged, "call_serving_endpoint") as mock_llm:
+            mock_llm.side_effect = [_answer(payload)]
+            result = staged.infer_relations(
+                host="h",
+                token="t",
+                endpoint_name="e",
+                draft=draft,
+                options={"existing_relations": existing},
+            )
+        user_prompt = mock_llm.call_args_list[0].args[3][1]["content"]
+        assert "settles" in user_prompt
+        assert [r["label"] for r in result.result["relations"]] == ["carries"]
+
     def test_trace_identity(self):
         _, mock_llm = self._run([_answer('{"relations": []}')])
         assert mock_llm.call_args_list[0].kwargs["trace_name"] == "owl_generator.relations"
@@ -777,6 +804,30 @@ class TestPrompts:
         text = prompts.build_relations_user_prompt(draft)
         assert "cand-6" in text
         assert "Shipper" in text
+
+    def test_relations_prompt_lists_existing_relations(self):
+        draft = _draft(
+            anchors=[
+                GenerateEntity.locked_anchor("Payment", "Payment"),
+                GenerateEntity.locked_anchor("Contract", "Contract"),
+            ]
+        )
+        text = prompts.build_relations_user_prompt(
+            draft,
+            existing_relations=[
+                {"label": "settles", "domain": "Payment", "range": "Contract"}
+            ],
+        )
+        assert "Payment --settles--> Contract" in text
+
+    def test_relations_prompt_omits_existing_block_when_empty(self):
+        text = prompts.build_relations_user_prompt(_draft())
+        assert "EXISTING OBJECT PROPERTIES" not in text
+
+    def test_relations_system_prompt_forbids_paraphrases_and_inverses(self):
+        lowered = prompts.build_relations_system_prompt().lower()
+        assert "paraphrase" in lowered
+        assert "active voice" in lowered
 
     def test_prompts_carry_pitfall_naming_rules_up_front(self):
         # Prompt-first: naming rules live in the stage prompt, not in a

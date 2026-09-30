@@ -219,9 +219,15 @@ fixed, closed set of entities.
 {_CLOSURE_RULE}
 
 {_NAMING_RULES}
-• At most ONE direction between any pair of entities. Never emit a relation
-  AND its inverse (handles vs handled, owns vs ownedBy, hasX vs isXOf).
-  Pick the active-voice direction only.
+• One fact = ONE relation. Never emit a relation AND its inverse
+  (handles vs handled, settles vs settledBy, owns vs ownedBy, hasX vs isXOf),
+  and never a paraphrase of the same fact in either direction (settledBy
+  and isSettledBy are the same relation). Use the active voice (settles,
+  not isSettledBy).
+• Distinct business facts between the same two entities are allowed
+  (Customer places Order AND Customer cancels Order).
+• Never restate a relation listed under EXISTING OBJECT PROPERTIES, in
+  either direction or as a paraphrase — only add genuinely new facts.
 
 # OUTPUT (JSON ONLY — NO PROSE, NO CODE FENCES)
 {{"relations": [
@@ -292,10 +298,26 @@ def _prior_results_block(draft: GenerateDraft, substages: Sequence[str]) -> str:
 # repeatably) — a wording-only prompt change, not a parsing workaround: no
 # lenient/tolerant parsing was added for the double-encoded shape, and
 # `validate_references`/reject-only stay unweakened either way.
-def build_relations_user_prompt(draft: GenerateDraft) -> str:
+def _existing_relations_block(existing_relations: Sequence[dict]) -> str:
+    lines = [
+        f"- {rel.get('domain')} --{rel.get('label')}--> {rel.get('range')}"
+        for rel in existing_relations
+    ]
+    if not lines:
+        return ""
+    return (
+        "EXISTING OBJECT PROPERTIES (already in the ontology — do not "
+        "restate, invert, or paraphrase):\n" + "\n".join(lines) + "\n\n"
+    )
+
+
+def build_relations_user_prompt(
+    draft: GenerateDraft, existing_relations: Sequence[dict] = ()
+) -> str:
     return (
         "Closed entity set (reference ONLY these ids):\n"
         f"{_entity_catalog(draft)}\n\n"
+        f"{_existing_relations_block(existing_relations)}"
         "Now infer and provide the relations."
     )
 

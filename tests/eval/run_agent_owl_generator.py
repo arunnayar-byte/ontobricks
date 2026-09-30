@@ -63,7 +63,12 @@ THRESHOLDS = ROOT / "tests/eval/thresholds.yaml"
 # regression row `staged-no-inverse-relations-001` proves
 # `schemas.drop_inverse_relations` keeps the active-voice direction only
 # (`drops_inverse_relations` constraint kind) — see SPEC.md §6.
-_MIN_STAGED_EXAMPLES = 18
+#
+# Raised 18 -> 28 (semantic relation dedup): ten `staged-relation-dedup-*`
+# rows prove paraphrases/inverses collapse to one active-voice relation,
+# distinct predicates on the same pair survive, and existing ontology
+# relations are never restated — see SPEC.md §6.
+_MIN_STAGED_EXAMPLES = 28
 _REQUIRED_STAGED_CONSTRAINT_FIELDS = {"kind", "value"}
 
 # Every required staged topic must be exercised by at least one staged
@@ -85,6 +90,10 @@ _REQUIRED_STAGED_CONSTRAINT_KINDS = {
     # locked in so this coverage cannot silently disappear from the dataset.
     "rejects_bracketed_id_reference",
     "drops_inverse_relations",
+    "collapses_passive_paraphrase",
+    "collapses_inverse_paraphrase",
+    "keeps_distinct_predicates_same_pair",
+    "keeps_existing_ontology_relation",
 }
 
 

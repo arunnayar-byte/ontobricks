@@ -43,6 +43,7 @@ from back.objects.ontology.GenerateDraft import (
 )
 from agents.agent_owl_generator import staged as owl_staged
 from agents.agent_owl_generator import schemas as owl_schemas
+from agents.agent_owl_generator.RelationDeduplicator import RelationDeduplicator
 from shared.config.constants import DEFAULT_BASE_URI
 
 logger = get_logger(__name__)
@@ -71,6 +72,18 @@ def _substage_runners() -> Dict[str, Callable[..., Any]]:
         SUBSTAGE_ATTRIBUTES: owl_staged.infer_attributes,
         SUBSTAGE_AXIOMS: owl_staged.infer_axioms,
     }
+
+
+def _existing_relations(domain, draft: GenerateDraft) -> List[Dict[str, str]]:
+    """Existing object properties between anchors, in anchor-id space."""
+    anchor_ids = {a.id for a in draft.existing_anchors}
+    return [
+        {"label": p.get("label") or p.get("name") or "", "domain": p["domain"], "range": p["range"]}
+        for p in domain.get_properties() or []
+        if p.get("type") == "ObjectProperty"
+        and p.get("domain") in anchor_ids
+        and p.get("range") in anchor_ids
+    ]
 
 
 # Entity-closure reference extractors per substage. ``staged.py`` already
@@ -431,6 +444,10 @@ class GenerateWorkflow:
 
         draft_id = domain.domain_folder or domain.info.get("name", "") or "generate-draft"
         runners = _substage_runners()
+        relations_options = {
+            **(options or {}),
+            "existing_relations": _existing_relations(domain, draft),
+        }
 
         while True:
             substage = draft.next_pending_substage()
@@ -444,7 +461,7 @@ class GenerateWorkflow:
                 token=token,
                 endpoint_name=endpoint_name,
                 draft=draft,
-                options=options,
+                options=relations_options if substage == SUBSTAGE_RELATIONS else options,
                 draft_id=draft_id,
                 draft_revision=draft.draft_revision,
                 on_step=on_step,
@@ -614,8 +631,11 @@ class GenerateWorkflow:
             for p in properties
             if p.get("type") == "ObjectProperty"
         }
-        existing_directed_pairs: Set[tuple] = {
-            (p.get("domain"), p.get("range"))
+        # Semantic keys collapse paraphrases/inverses of an already-present
+        # fact (``settles`` blocks a later ``isSettledBy``) while distinct
+        # predicates on the same pair stay mergeable.
+        existing_semantic_keys: Set[Any] = {
+            RelationDeduplicator.semantic_key(p)
             for p in properties
             if p.get("type") == "ObjectProperty" and p.get("domain") and p.get("range")
         }
@@ -631,22 +651,22 @@ class GenerateWorkflow:
                     "merge: dropping relation with unresolved entity id: %s", rel
                 )
                 continue
-            if (
-                domain_name != range_name
-                and (range_name, domain_name) in existing_directed_pairs
-            ):
-                logger.info("merge: dropping inverse relation %s", rel)
-                continue
             rel_label = rel.get("label") or ""
             rel_key = (domain_name, range_name, rel_label)
             if rel_key in existing_relation_keys:
                 # Idempotent: this relation was already merged (prior attempt
                 # or an exact repeat in the same result).
                 continue
+            semantic_key = RelationDeduplicator.semantic_key(
+                {"label": rel_label, "domain": domain_name, "range": range_name}
+            )
+            if semantic_key in existing_semantic_keys:
+                logger.info("merge: dropping duplicate/inverse relation %s", rel)
+                continue
             prop_name = _unique_name(_sanitize_camel(rel_label), existing_prop_names)
             existing_prop_names.add(prop_name)
             existing_relation_keys.add(rel_key)
-            existing_directed_pairs.add((domain_name, range_name))
+            existing_semantic_keys.add(semantic_key)
             properties.append(
                 Ontology.build_property_from_data(
                     {

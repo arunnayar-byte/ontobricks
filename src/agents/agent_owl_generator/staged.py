@@ -610,7 +610,12 @@ def infer_relations(
     draft_revision: Optional[int] = None,
     on_step: Optional[Callable[[str], None]] = None,
 ) -> CompletionResult:
-    """Stage 3a: infer object-property relations over the closed entity set."""
+    """Stage 3a: infer object-property relations over the closed entity set.
+
+    ``options["existing_relations"]`` (``{label, domain, range}`` over anchor
+    ids) are shown to the model and any restatement of them is dropped.
+    """
+    existing = list((options or {}).get("existing_relations") or [])
     return _run_completion(
         substage=SUBSTAGE_RELATIONS,
         host=host,
@@ -618,8 +623,8 @@ def infer_relations(
         endpoint_name=endpoint_name,
         draft=draft,
         system_prompt=prompts.build_relations_system_prompt(),
-        user_prompt=prompts.build_relations_user_prompt(draft),
-        parse_fn=schemas.parse_relations_payload,
+        user_prompt=prompts.build_relations_user_prompt(draft, existing),
+        parse_fn=lambda text: schemas.parse_relations_payload(text, existing),
         refs_fn=schemas.relations_referenced_ids,
         response_format=_completion_response_format(
             schemas.build_relations_response_format, draft

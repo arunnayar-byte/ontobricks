@@ -285,6 +285,47 @@ class TestParseRelationsPayload:
         result = schemas.parse_relations_payload(payload)
         assert len(result["relations"]) == 2
 
+    def test_distinct_reverse_predicates_on_same_pair_are_kept(self):
+        payload = json.dumps(
+            {
+                "relations": [
+                    {"label": "issues", "domain": "cand-Company", "range": "cand-Invoice"},
+                    {"label": "references", "domain": "cand-Invoice", "range": "cand-Company"},
+                ]
+            }
+        )
+        result = schemas.parse_relations_payload(payload)
+        assert [r["label"] for r in result["relations"]] == ["issues", "references"]
+
+    def test_settlement_paraphrases_collapse_to_active_voice(self):
+        payload = json.dumps(
+            {
+                "relations": [
+                    {"label": "settledBy", "domain": "cand-Contract", "range": "cand-Payment"},
+                    {"label": "isSettledBy", "domain": "cand-Contract", "range": "cand-Payment"},
+                    {"label": "settles", "domain": "cand-Payment", "range": "cand-Contract"},
+                ]
+            }
+        )
+        result = schemas.parse_relations_payload(payload)
+        assert result["relations"] == [
+            {"label": "settles", "domain": "cand-Payment", "range": "cand-Contract"}
+        ]
+
+    def test_paraphrase_of_existing_relation_is_dropped(self):
+        payload = json.dumps(
+            {
+                "relations": [
+                    {"label": "isSettledBy", "domain": "Contract", "range": "Payment"},
+                ]
+            }
+        )
+        result = schemas.parse_relations_payload(
+            payload,
+            existing=[{"label": "settles", "domain": "Payment", "range": "Contract"}],
+        )
+        assert result["relations"] == []
+
 
 class TestParseAttributesPayload:
     def test_parses_attributes(self):

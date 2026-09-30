@@ -600,6 +600,65 @@ class TestRunCompletion:
 # ---------------------------------------------------------------------------
 
 
+class TestExistingRelationsPassedToRelationsStage:
+    def test_relations_runner_receives_existing_object_properties(
+        self, domain_session, monkeypatch
+    ):
+        domain_session.ontology["classes"] = [
+            {"name": "Payment", "label": "Payment", "uri": "http://x#Payment"},
+            {"name": "Contract", "label": "Contract", "uri": "http://x#Contract"},
+        ]
+        domain_session.ontology["properties"] = [
+            {
+                "name": "settles",
+                "label": "settles",
+                "type": "ObjectProperty",
+                "domain": "Payment",
+                "range": "Contract",
+            },
+            {
+                "name": "amount",
+                "label": "amount",
+                "type": "DatatypeProperty",
+                "domain": "Payment",
+                "range": "xsd:decimal",
+            },
+        ]
+        monkeypatch.setattr(
+            wf.owl_staged,
+            "detect_entities",
+            lambda **kw: _detection_result(["Carrier"]),
+        )
+        wf.run_detection(
+            domain_session, _settings(), host="h", token="t", endpoint_name="e"
+        )
+        seen = {}
+
+        def _relations(**kw):
+            seen["options"] = kw.get("options") or {}
+            return _completion_ok("relations", {"relations": []})
+
+        monkeypatch.setattr(wf.owl_staged, "infer_relations", _relations)
+        monkeypatch.setattr(
+            wf.owl_staged,
+            "infer_attributes",
+            lambda **kw: _completion_ok("attributes", {"attributes": []}),
+        )
+        monkeypatch.setattr(
+            wf.owl_staged,
+            "infer_axioms",
+            lambda **kw: _completion_ok("axioms", {"axioms": []}),
+        )
+
+        wf.run_completion(
+            domain_session, _settings(), host="h", token="t", endpoint_name="e"
+        )
+
+        assert seen["options"]["existing_relations"] == [
+            {"label": "settles", "domain": "Payment", "range": "Contract"}
+        ]
+
+
 class TestMergePreservesExistingEntities:
     def test_anchor_identity_untouched_by_merge(self, domain_session, monkeypatch):
         domain_session.ontology["classes"] = [
@@ -1279,3 +1338,70 @@ class TestInverseRelationMerge:
         assert object_props[0]["label"] == "handles"
         assert object_props[0]["domain"] == "Agent"
         assert object_props[0]["range"] == "Claim"
+
+
+class TestSemanticRelationMerge:
+    @staticmethod
+    def _draft_with_relations(entities, relations):
+        draft = GenerateDraft.new(
+            source_fingerprint="sha256:semantic",
+            candidate_entities=entities,
+            stage=REVIEWING,
+        )
+        return draft.with_checkpoint(
+            "relations", CHECKPOINT_DONE, result={"relations": relations}
+        )
+
+    @staticmethod
+    def _object_props(domain_session):
+        return [
+            p for p in domain_session.get_properties() if p.get("type") == "ObjectProperty"
+        ]
+
+    def test_paraphrase_of_existing_property_is_not_added(self, domain_session):
+        payment = GenerateEntity.new_candidate("Payment")
+        contract = GenerateEntity.new_candidate("Contract")
+        first = self._draft_with_relations(
+            [payment, contract],
+            [{"label": "settles", "domain": payment.id, "range": contract.id}],
+        )
+        wf.merge_draft_into_ontology(domain_session, first)
+
+        second = self._draft_with_relations(
+            [payment, contract],
+            [{"label": "isSettledBy", "domain": contract.id, "range": payment.id}],
+        )
+        stats = wf.merge_draft_into_ontology(domain_session, second)
+
+        assert stats["relations_added"] == 0
+        labels = [p["label"] for p in self._object_props(domain_session)]
+        assert labels == ["settles"]
+
+    def test_distinct_reverse_predicate_is_kept(self, domain_session):
+        company = GenerateEntity.new_candidate("Company")
+        invoice = GenerateEntity.new_candidate("Invoice")
+        draft = self._draft_with_relations(
+            [company, invoice],
+            [
+                {"label": "issues", "domain": company.id, "range": invoice.id},
+                {"label": "references", "domain": invoice.id, "range": company.id},
+            ],
+        )
+        stats = wf.merge_draft_into_ontology(domain_session, draft)
+
+        assert stats["relations_added"] == 2
+        labels = sorted(p["label"] for p in self._object_props(domain_session))
+        assert labels == ["issues", "references"]
+
+    def test_paraphrases_in_same_result_merge_once(self, domain_session):
+        contract = GenerateEntity.new_candidate("Contract")
+        payment = GenerateEntity.new_candidate("Payment")
+        draft = self._draft_with_relations(
+            [contract, payment],
+            [
+                {"label": "settledBy", "domain": contract.id, "range": payment.id},
+                {"label": "isSettledBy", "domain": contract.id, "range": payment.id},
+            ],
+        )
+        stats = wf.merge_draft_into_ontology(domain_session, draft)
+        assert stats["relations_added"] == 1

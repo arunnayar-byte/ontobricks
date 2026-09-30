@@ -782,6 +782,18 @@ def _c_drops_inverse_relations(_e, _c) -> bool:
     )
 
 
+def _c_relation_dedup(_e, constraint) -> bool:
+    """Semantic relation dedup: the parser, given ``value.relations`` (and
+    optional ``value.existing`` ontology relations), must return exactly
+    ``value.expect`` as ``label:domain:range`` triples, in order.
+    Deterministic — exercises the parser, no LLM."""
+    value = constraint["value"]
+    payload = json.dumps({"relations": value["relations"]})
+    result = schemas.parse_relations_payload(payload, value.get("existing", []))
+    got = [f"{r['label']}:{r['domain']}:{r['range']}" for r in result["relations"]]
+    return got == value["expect"]
+
+
 _CHECKS: Dict[str, Callable[[dict, dict], bool]] = {
     "all_candidates_included_by_default": _c_all_included,
     "excludes_existing_anchor_as_new": _c_excludes_anchor,
@@ -818,6 +830,10 @@ _CHECKS: Dict[str, Callable[[dict, dict], bool]] = {
     "stage_no_one_shot_default": _c_no_one_shot_default,
     "requires_explicit_stage_flow": _c_requires_explicit_flow,
     "drops_inverse_relations": _c_drops_inverse_relations,
+    "collapses_passive_paraphrase": _c_relation_dedup,
+    "collapses_inverse_paraphrase": _c_relation_dedup,
+    "keeps_distinct_predicates_same_pair": _c_relation_dedup,
+    "keeps_existing_ontology_relation": _c_relation_dedup,
 }
 
 

@@ -63,10 +63,22 @@ def _import_owl(page, live_server: str, headers: dict, turtle: str = MINIMAL_OWL
 
 class TestOntologyOwlSection:
     def _open_owl(self, page, live_server: str) -> None:
+        # Ontology no longer has a sidebar item named "owl" (OWL lives under
+        # Domain as ``owl-content``). The pane is still on the ontology page
+        # as ``#owl-section``; activate it directly so the contract does not
+        # depend on a removed nav key.
         page.goto(f"{live_server}/ontology")
         page.wait_for_load_state("domcontentloaded")
         page.wait_for_timeout(500)
-        page.evaluate('SidebarNav.switchTo("owl")')
+        page.evaluate(
+            """() => {
+                document.querySelectorAll('.sidebar-section').forEach(
+                    (section) => section.classList.remove('active')
+                );
+                const target = document.getElementById('owl-section');
+                if (target) target.classList.add('active');
+            }"""
+        )
         page.wait_for_timeout(400)
 
     def test_owl_section_visible(self, page, live_server):

@@ -100,6 +100,11 @@ the durable draft contract and async workflow that consume them):
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: agents.agent_owl_generator.RelationDeduplicator
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: agents.agent_owl_generator.prompts
    :members:
    :undoc-members:
