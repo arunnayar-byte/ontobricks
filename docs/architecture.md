@@ -610,6 +610,50 @@ The UI uses a consistent **sidebar layout** across all main pages:
 - **Responsive behavior:** below `768px`, labels are visually hidden and the
   rail uses titled icon targets while preserving DOM labels for accessibility.
 
+### Ontology Studio multi-select
+
+The Studio D3 canvas (`src/front/static/ontology/js/ontology-map.js`) keeps one
+module-level selection set, `mapSelectedEntityNames`. Every write goes through
+`_setMapSelection(names, options)`, which syncs the `.map-node.selected` ring,
+runs 1-hop neighbourhood dimming only when exactly one entity is selected,
+guarded-closes the single-entity panel otherwise, and **closes any open context
+menu** (a menu captures the selection it was opened for).
+
+| Gesture | Behaviour |
+|---------|-----------|
+| Ctrl/Cmd-click on an entity | Toggle membership; the panel does not open |
+| Ctrl/Cmd-drag on empty canvas | Marquee; on `pointerup` the selection is replaced by the entities inside. An empty marquee leaves the selection unchanged |
+| Plain click on entity / empty canvas | Select one entity (opens panel) / clear selection |
+| Escape | Close the context menu and clear a multi-selection. Ignored while a Bootstrap modal is open or Studio (`#map-section`) is not the active section |
+
+Design notes:
+
+- **Click after marquee.** A browser dispatches `click` on the canvas right
+  after the marquee `pointerup`. `_suppressNextMapCanvasClick()` arms a
+  one-shot, time-boxed guard (reset by the next `pointerdown`) that the canvas
+  `click` handler consumes first, so the marquee result survives.
+- **Marquee lifecycle.** `pointermove` / `pointerup` / `pointercancel` /
+  `blur` / canvas `pointerleave` listeners are attached per gesture and removed
+  by `cleanup()`, which never changes the selection. Releasing Ctrl/Cmd before
+  `pointerup` cancels the marquee.
+- **macOS Control-click.** Control-click raises `contextmenu` rather than
+  `click`, so the node `contextmenu` handler toggles membership when a modifier
+  is held (and the canvas `contextmenu` handler ignores modifier events).
+- **Group actions.** Dragging a selected node moves the whole set by the same
+  delta; the multi-select menu offers *Create Business View* and *Delete N
+  entities* and re-reads the live selection when clicked.
+- **Map rebuilds.** `initOntologyMap()` resets the selection with
+  `{ closePanel: false }` so a rebuild never double-saves or closes a panel that
+  was just opened.
+- **Business Views.** `createBusinessViewFromEntity()` (1-hop) and
+  `createBusinessViewFromSelection()` (selected-only, `Auto_Selection`) only
+  collect names and links; both delegate view creation, layout, visibility and
+  navigation to `_createMapBusinessView()`.
+
+Regression coverage: `tests/units/front/test_ontology_map_multi_select.py`
+(source contracts) and `tests/e2e/ontology/test_studio_multi_select_flows.py`
+(real Playwright pointer input).
+
 ### Page Structure
 
 Each main page (Ontology, Mapping, Knowledge Graph) follows this pattern:

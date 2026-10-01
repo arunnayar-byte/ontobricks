@@ -43,9 +43,9 @@ def _marquee_block():
 def test_marquee_starts_only_on_empty_canvas():
     marquee = _marquee_block()
     assert "event.target.tagName !== 'svg'" in marquee
-    assert ".map-link" in marquee
-    assert ".map-link-hitarea" in marquee
-    assert ".map-link-label" in marquee
+    # Anything but the bare <svg> was already rejected above; the old
+    # ``closest('.map-node, .map-link, ...')`` guard was unreachable.
+    assert "closest(" not in marquee
 
 
 def _relationship_hitarea_block():
@@ -106,8 +106,8 @@ def test_multi_context_menu_limits_actions():
     assert "Create Business View" in block
     assert "Delete ${names.length} entities" in block
     assert "create-relationship" not in block
-    assert "createBusinessViewFromSelection(names)" in block
-    assert "deleteEntitiesFromMap(names)" in block
+    assert "createBusinessViewFromSelection(live)" in block
+    assert "deleteEntitiesFromMap(live)" in block
 
 
 def test_multi_delete_mutates_and_saves_once():
@@ -119,6 +119,10 @@ def test_multi_delete_mutates_and_saves_once():
     assert "title: 'Delete entities'" in block
     assert "typeof showConfirmDialog !== 'function'" in block
     assert block.count("showConfirmDialog(") == 1
+    # Notify the number actually removed, not the number requested.
+    assert "const removedCount =" in block
+    assert "${removedCount}" in block
+    assert "${names.length} entities deleted" not in block
     assert "async function createBusinessViewFromSelection(names)" in js
 
 
@@ -127,24 +131,30 @@ def test_multi_business_view_keeps_only_internal_links():
     block = _function_block(js, "async function createBusinessViewFromSelection(")
     assert "const visibleNames = new Set(names)" in block
     assert "visibleNames.has(source) && visibleNames.has(target)" in block
-    assert "let viewName = 'Auto_Selection'" in block
-    assert "const cx = 450, cy = 280, radius = 230" in block
-    assert "hiddenEntities" in block
-    assert "hiddenRelationships" in block
-    assert "hiddenInheritances" in block
-    assert "/domain/design-views/create" in block
-    assert "/domain/design-views/switch" in block
-    assert "/domain/design-views/save-current" in block
-    assert "SidebarNav.switchTo('design')" in block
+    assert "baseName: 'Auto_Selection'" in block
+    assert "_createMapBusinessView(" in block
     assert "neighbourNames" not in block
+    helper = _function_block(js, "async function _createMapBusinessView(")
+    assert "const cx = 450, cy = 280, radius = 230" in helper
+    assert "hiddenEntities" in helper
+    assert "hiddenRelationships" in helper
+    assert "hiddenInheritances" in helper
+    assert "/domain/design-views/create" in helper
+    assert "/domain/design-views/switch" in helper
+    assert "/domain/design-views/save-current" in helper
+    assert "SidebarNav.switchTo('design')" in helper
 
 
 def test_single_entity_business_view_stays_one_hop():
     js = MAP_JS.read_text(encoding="utf-8")
     block = _function_block(js, "async function createBusinessViewFromEntity(")
-    assert "let viewName = `Auto_${selectedName}`" in block
+    assert "baseName: `Auto_${selectedName}`" in block
     assert "const neighbourNames = new Set()" in block
-    assert "const allEntityNames = [selectedName, ...Array.from(neighbourNames)]" in block
+    assert "[selectedName, ...Array.from(neighbourNames)]" in block
+    # Single-entity layout: selected entity at the centre, neighbours on a circle.
+    assert "i === 0" in block
+    assert "neighbourNames.size" in block
+    assert "_createMapBusinessView(" in block
 
 
 def _node_contextmenu_block():
@@ -184,3 +194,104 @@ def test_modifier_contextmenu_on_svg_preserves_marquee():
     assert modifier_at < show_at
     assert "event.preventDefault()" in block[:show_at]
     assert "return" in block[modifier_at:show_at]
+
+
+# ── Final-review fixes ────────────────────────────────────────────────────────
+
+
+def test_canvas_click_honours_marquee_suppression():
+    """A browser click follows the marquee pointerup; it must not clear."""
+    block = _map_init_block()
+    start = block.index("svg.on('click', function()")
+    end = block.index("function startMapMarquee(event)", start)
+    canvas = block[start:end]
+    assert "_consumeMapCanvasClickSuppression()" in canvas
+    first_statement = canvas.index("_consumeMapCanvasClickSuppression()")
+    assert first_statement < canvas.index("_clearMapSelection(")
+    assert first_statement < canvas.index("guardedCloseSharedPanel()")
+
+
+def test_marquee_pointerup_arms_click_suppression_and_checks_modifier():
+    marquee = _marquee_block()
+    up = marquee[marquee.index("function onUp(evt)"):]
+    assert "_suppressNextMapCanvasClick()" in up
+    assert "evt.ctrlKey || evt.metaKey" in up
+    # Selection changes only after the modifier check passed.
+    assert up.index("evt.ctrlKey || evt.metaKey") < up.index("_setMapSelection(namesInside")
+
+
+def test_marquee_cleans_up_on_pointercancel_and_blur():
+    marquee = _marquee_block()
+    assert "window.addEventListener('pointercancel'" in marquee
+    assert "window.removeEventListener('pointercancel'" in marquee
+    assert "window.addEventListener('blur'" in marquee
+    assert "window.removeEventListener('blur'" in marquee
+    cleanup = marquee[marquee.index("function cleanup()"):marquee.index("function onCancel()")]
+    assert "_setMapSelection" not in cleanup
+    assert "_clearMapSelection" not in cleanup
+
+
+def test_suppression_helpers_are_time_boxed():
+    js = MAP_JS.read_text(encoding="utf-8")
+    assert "function _suppressNextMapCanvasClick()" in js
+    block = _function_block(js, "function _consumeMapCanvasClickSuppression()")
+    # One-shot: consumed on first click, and expires if no click follows.
+    assert "_mapCanvasClickSuppressUntil = 0" in block
+    assert "performance.now()" in block
+
+
+def test_selection_change_closes_context_menu():
+    js = MAP_JS.read_text(encoding="utf-8")
+    block = _function_block(js, "function _setMapSelection(")
+    assert "hideMapContextMenu()" in block
+
+
+def test_escape_closes_menu_and_respects_modal_and_inactive_studio():
+    js = MAP_JS.read_text(encoding="utf-8")
+    block = _function_block(js, "function handleMapSelectionKeyDown(")
+    assert "hideMapContextMenu()" in block
+    assert ".modal.show" in block
+    assert "#map-section.active" in block
+    assert block.index(".modal.show") < block.index("_clearMapSelection()")
+    assert block.index("#map-section.active") < block.index("_clearMapSelection()")
+
+
+def test_multi_menu_actions_reread_live_selection():
+    js = MAP_JS.read_text(encoding="utf-8")
+    block = _function_block(js, "function showMapMultiSelectContextMenu(")
+    assert "_liveMapSelectionNames()" in block
+    assert "deleteEntitiesFromMap(live)" in block
+    assert "createBusinessViewFromSelection(live)" in block
+    assert "deleteEntitiesFromMap(names)" not in block
+    helper = _function_block(js, "function _liveMapSelectionNames()")
+    assert "mapSelectedEntityNames" in helper
+
+
+def test_map_rebuild_does_not_close_the_panel():
+    block = _map_init_block()
+    start = block.index("const thisGeneration = ++_mapInitGeneration;")
+    head = block[start:start + 300]
+    assert "_clearMapSelection({ closePanel: false })" in head
+    assert "_clearMapSelection();" not in head
+
+
+def test_business_view_builders_share_one_helper():
+    js = MAP_JS.read_text(encoding="utf-8")
+    assert js.count("/domain/design-views/create") == 1
+    assert js.count("/domain/design-views/switch") == 1
+    assert js.count("/domain/design-views/save-current") == 1
+    for signature in (
+        "async function createBusinessViewFromEntity(",
+        "async function createBusinessViewFromSelection(",
+    ):
+        block = _function_block(js, signature)
+        assert "_createMapBusinessView(" in block
+        assert len(block.splitlines()) < 60, signature
+
+
+def test_new_pointerdown_resets_leftover_click_suppression():
+    block = _map_init_block()
+    start = block.index("svg.on('pointerdown'")
+    handler = block[start:block.index("svg.on('contextmenu'", start)]
+    assert "_mapCanvasClickSuppressUntil = 0" in handler
+    assert handler.index("_mapCanvasClickSuppressUntil = 0") < handler.index("startMapMarquee(event)")
