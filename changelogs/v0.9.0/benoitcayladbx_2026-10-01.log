@@ -31,3 +31,33 @@ Modified files:
 - changelogs/v0.9.0/benoitcayladbx_2026-10-01.log
 
 Tests: uv run --frozen pytest -q -m "not scenario" → 7199 passed, 315 skipped, 6 deselected, 1 xfailed, 32 warnings in 51.04s
+
+## Confirm Ontology Studio icon remapping
+
+Context: Clicking Auto-map icons in Ontology Studio stopped with
+"All entities already have custom icons" once every class had a custom
+emoji. Users needed a way to replace those icons after confirmation.
+
+Changes:
+
+1. src/front/static/ontology/js/ontology-map.js
+   When no default-icon candidates remain, ask via showConfirmDialog and
+   remap every entity if the user confirms; keep mixed default/custom
+   assignment one-click.
+2. tests/units/front/test_ontology_icon_remap_confirmation.py
+   Source-contract coverage for confirmation copy, cancel, full remap,
+   running-task guard, and missing-helper safety.
+3. docs/features.md
+   Document the remap confirmation on Auto-Map Icons.
+4. docs/architecture.md
+   Document the Studio toolbar candidate selection and remap confirm path.
+
+Modified files:
+- src/front/static/ontology/js/ontology-map.js
+- tests/units/front/test_ontology_icon_remap_confirmation.py
+- docs/features.md
+- docs/architecture.md
+- changelogs/v0.9.0/benoitcayladbx_2026-10-01.log
+
+Tests: uv run --frozen pytest -q -m "not scenario" → 7205 passed, 315 skipped, 6 deselected, 1 xfailed, 32 warnings in 51.05s
+

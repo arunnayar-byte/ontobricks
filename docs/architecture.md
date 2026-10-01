@@ -1844,7 +1844,7 @@ In addition to the UI-driven agents, OntoBricks provides an **MCP server** (`mcp
 
 **Tools used**: `get_ontology`, `get_metadata`, `assign_icons`
 
-**Invoked by**: `POST /ontology/auto-assign-icons` (synchronous, wrapped in `asyncio.to_thread`)
+**Invoked by**: Ontology Studio toolbar (`#mapAutoAssignIcons`) → `POST /ontology/auto-assign-icons` (background task). The frontend sends entities that still use the default icon. When every entity already has a custom icon, it asks the user to confirm a full remap, then sends every entity name.
 
 ---
 

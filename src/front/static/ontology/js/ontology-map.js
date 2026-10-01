@@ -2316,9 +2316,9 @@ async function checkAndResumeIconsTask() {
 }
 
 /**
- * Auto-map icons to all entities that still have the default icon.
- * Starts the icon agent as a background task, persists task_id to
- * sessionStorage, and polls /tasks/{id} for the result.
+ * Auto-map icons to entities that still have the default icon.
+ * When every entity already has a custom icon, ask the user to confirm a
+ * full remap before starting the same background task.
  */
 async function autoAssignEntityIcons() {
     if (window.isActiveVersion === false) return;
@@ -2330,21 +2330,33 @@ async function autoAssignEntityIcons() {
         return;
     }
 
-    const defaultEmoji = OntologyState.defaultClassEmoji || '📦';
-    const candidates = classes.filter(cls => (cls.emoji || defaultEmoji) === defaultEmoji);
-    if (candidates.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('All entities already have custom icons', 'info', 2000);
-        }
-        return;
-    }
-
     // A task is already running — don't launch another.
     if (sessionStorage.getItem(ICONS_TASK_KEY)) {
         if (typeof showNotification === 'function') {
             showNotification('Icon assignment already in progress…', 'info', 2500);
         }
         return;
+    }
+
+    const defaultEmoji = OntologyState.defaultClassEmoji || '📦';
+    let candidates = classes.filter(cls => (cls.emoji || defaultEmoji) === defaultEmoji);
+    if (candidates.length === 0) {
+        if (typeof showConfirmDialog !== 'function') {
+            if (typeof showNotification === 'function') {
+                showNotification('All entities already have custom icons', 'info', 2000);
+            }
+            return;
+        }
+        const confirmed = await showConfirmDialog({
+            title: 'Remap entity icons?',
+            message: 'All entities already have custom icons. Remapping will replace every current icon.',
+            confirmText: 'Remap all',
+            cancelText: 'Cancel',
+            confirmClass: 'btn-primary',
+            icon: 'emoji-smile',
+        });
+        if (!confirmed) return;
+        candidates = classes;
     }
 
     const entityNames = candidates.map(cls => cls.name);
