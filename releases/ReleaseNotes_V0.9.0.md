@@ -13,6 +13,7 @@
 - **New Version from the navbar** — branch the open domain from the Versions popup without opening Domain → Versions.
 - **Unity Catalog names that start with a digit** — data sources such as `5_g_subscribers` load when backtick-quoted, matching Unity Catalog rules.
 - **Safer Databricks Apps result download** — CloudFetch can be turned off globally when Apps cannot reach the CloudFetch storage host.
+- **Dependabot security floors** — PyJWT, GitPython, urllib3, anyio, cryptography, MLflow, and sentence-transformers raised to patched releases. oauthlib 4.x and the remaining NLTK pathsec advisory are blocked upstream.
 
 This release is additive on v0.8.0. Ontology-only domains, MCP policy, virtual attributes, branding, and the Clarity UI remain as documented in `releases/ReleaseNotes_V0.8.0.md`.
 
@@ -96,6 +97,27 @@ Operator guides now describe the Build / Query split, the Lakehouse//RT toggle, 
 - Fixed Ontology Designer flashing a full-map spinner on metadata-only saves.
 - Fixed the navbar hiding a still-loaded domain after a failed or slow navbar refresh.
 - Fixed `GET /api/v1/digitaltwin/triples` crashing with `NameError` on every request.
+
+---
+
+## Security (Dependabot)
+
+Raised uv constraint floors and relocked `uv.lock` / `src/mcp-server/uv.lock` against patched releases:
+
+| Package | Floor | Notes |
+|---------|-------|--------|
+| PyJWT | ≥2.15.0 | HMAC/JWK confusion series, RecursionError, options-dict mutation |
+| GitPython | ≥3.1.62 | submodule path traversal, ReDoS, git-dir impersonation |
+| urllib3 | ≥2.8.0 | proxy TLS override, unbounded chunk-size, Deflate loop |
+| anyio | ≥4.14.2 | TLSStream IDNA 2003 spoofing, process-pool stderr stall |
+| cryptography | ≥50.0.0 | PKCS#7 oracle + path-building; now allowed by MLflow 3.16.1 (`cryptography<51`) |
+| MLflow | ≥3.16.1 | outside AI Gateway SSRF range (3.13.0–3.15.2) |
+| sentence-transformers | ≥5.6.0 | `trust_remote_code` bypass on local model load (pitfalls extra) |
+
+**Not patched (upstream):**
+
+- **oauthlib 4.0.0** — `databricks-sql-connector` 4.4–4.6 still requires `oauthlib>=3.1.0,<4.0.0`.
+- **NLTK GHSA-8mgp-746c-j5xp** — latest published is 3.10.3; no patched release. Pitfalls extra only.
 
 ---
 
