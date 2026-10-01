@@ -13,8 +13,9 @@
 - **MCP session isolation ([#183](https://github.com/databrickslabs/ontobricks/pull/183))** — concurrent MCP clients on one server process keep their own selected domain and label/action caches. Resource reads use the same session scope as tool calls.
 - **Admin-only domain creation** — only Databricks App administrators (`CAN_MANAGE`) can create a new domain. Editors and Builders still save and work on assigned domains.
 - **SWRL inference filters** — rules that use string built-ins such as `swrlb:contains` now apply SQL predicates during Run Inference. Active-contract “owns meter” style rules return inferred triples instead of empty results.
-- **Data Quality condition builder** — selecting a property after the target entity is chosen no longer clears the property list or drops the selected value.
+- **Data Quality condition builder ([#186](https://github.com/databrickslabs/ontobricks/issues/186))** — selecting a property after the target entity is chosen no longer clears the property list or drops the selected value. Guarding a conformance/consistency rule with an IF condition can be completed and saved.
 - **License alignment ([#169](https://github.com/databrickslabs/ontobricks/issues/169))** — product, API, and OntoViz surfaces state the Databricks License as the first-party license.
+- **Dependabot security floors** — PyJWT, GitPython, urllib3, anyio, cryptography, MLflow, and sentence-transformers raised to patched releases. oauthlib 4.x and the remaining NLTK pathsec advisory are blocked upstream (see Security).
 
 No registry schema migration. No breaking MCP tool names.
 
@@ -71,9 +72,9 @@ Provenance: originally contributed by Laurent Prat ([#183](https://github.com/da
 
 ## Ontology, Rules, and Inference
 
-### Data Quality conditions
+### Data Quality conditions ([#186](https://github.com/databrickslabs/ontobricks/issues/186))
 
-Delegated condition-row handlers stay bound to the **latest** render options. An empty first render no longer poisons later property selections.
+Delegated condition-row handlers stay bound to the **latest** render options. An empty first render no longer poisons later property selections, so the IF-condition property dropdown keeps the chosen attribute and guarded rules can be saved.
 
 ### SWRL Run Inference
 
@@ -102,6 +103,27 @@ GitHub issue [#169](https://github.com/databrickslabs/ontobricks/issues/169) clo
 
 ---
 
+## Security (Dependabot)
+
+Raised uv constraint floors and relocked `uv.lock` / `src/mcp-server/uv.lock` against patched releases:
+
+| Package | Floor | Notes |
+|---------|-------|--------|
+| PyJWT | ≥2.15.0 | HMAC/JWK confusion series, RecursionError, options-dict mutation |
+| GitPython | ≥3.1.62 | submodule path traversal, ReDoS, git-dir impersonation |
+| urllib3 | ≥2.8.0 | proxy TLS override, unbounded chunk-size, Deflate loop |
+| anyio | ≥4.14.2 | TLSStream IDNA 2003 spoofing, process-pool stderr stall |
+| cryptography | ≥50.0.0 | PKCS#7 oracle + path-building; now allowed by MLflow 3.16.1 (`cryptography<51`) |
+| MLflow | ≥3.16.1 | outside AI Gateway SSRF range (3.13.0–3.15.2) |
+| sentence-transformers | ≥5.6.0 | `trust_remote_code` bypass on local model load (pitfalls extra) |
+
+**Not patched (upstream):**
+
+- **oauthlib 4.0.0** — `databricks-sql-connector` 4.4–4.6 still requires `oauthlib>=3.1.0,<4.0.0`.
+- **NLTK GHSA-8mgp-746c-j5xp** — latest published is 3.10.3; no patched release. Pitfalls extra only.
+
+---
+
 ## Documentation and operator notes
 
 - Architecture and user-guide Explorer sections describe the Spark SPARQL support boundary.
@@ -127,7 +149,7 @@ GitHub issue [#169](https://github.com/databrickslabs/ontobricks/issues/169) clo
 ## Bug Fixes (selected)
 
 - Fixed SWRL inference joining `swrlb:contains` as `predicate = '…#contains'` (no triples matched).
-- Fixed Data Quality condition property dropdown emptying after entity selection.
+- Fixed Data Quality IF-condition property dropdown emptying after entity selection ([#186](https://github.com/databrickslabs/ontobricks/issues/186)).
 - Fixed non-admin users being able to persist a new domain through save/create paths.
 - Fixed Spark SPARQL accepting or mis-mapping unsupported UNION / FILTER / GROUP BY shapes.
 - Fixed first-party license strings disagreeing across README, OpenAPI, and OntoViz.
