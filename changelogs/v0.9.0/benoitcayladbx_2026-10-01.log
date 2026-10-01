@@ -189,5 +189,28 @@ Modified files:
 
 Tests: uv run --frozen pytest -q -m "not scenario" → 7217 passed, 315 skipped, 6 deselected, 1 xfailed, 32 warnings in 49.69s
 
+## Fix macOS Control-click multi-select
+
+Context: Chromium on macOS emits pointerdown/mousedown/contextmenu/pointerup/mouseup
+for Control-click and never fires click, so the click-only Ctrl/Cmd toggle never
+ran. Control-drag on empty SVG started the marquee, then the SVG contextmenu
+opened the Canvas menu and interfered. Modifier contextmenu now toggles nodes
+and suppresses the Canvas menu; unmodified right-click menus stay unchanged.
+
+Changes:
+
+1. tests/units/front/test_ontology_map_multi_select.py
+   Failing-then-green contracts for modifier contextmenu on nodes and SVG.
+2. src/front/static/ontology/js/ontology-map.js
+   Toggle on modifier node contextmenu; preventDefault/return on modifier SVG
+   contextmenu so an active marquee is preserved.
+
+Modified files:
+- tests/units/front/test_ontology_map_multi_select.py
+- src/front/static/ontology/js/ontology-map.js
+- changelogs/v0.9.0/benoitcayladbx_2026-10-01.log
+
+Tests: uv run --frozen pytest -q -m "not scenario" → 7225 passed, 315 skipped, 6 deselected, 1 xfailed, 32 warnings in 46.81s
+
 
 

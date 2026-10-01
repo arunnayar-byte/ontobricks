@@ -145,3 +145,42 @@ def test_single_entity_business_view_stays_one_hop():
     assert "let viewName = `Auto_${selectedName}`" in block
     assert "const neighbourNames = new Set()" in block
     assert "const allEntityNames = [selectedName, ...Array.from(neighbourNames)]" in block
+
+
+def _node_contextmenu_block():
+    block = _map_init_block()
+    start = block.index("nodeElements.on('contextmenu'")
+    end = block.index("svg.on('click'", start)
+    return block[start:end]
+
+
+def _svg_contextmenu_block():
+    block = _map_init_block()
+    start = block.index("svg.on('contextmenu'")
+    end = block.index("ontologyMapSimulation.on('tick'", start)
+    return block[start:end]
+
+
+def test_modifier_contextmenu_on_node_toggles_without_menu():
+    """macOS Control-click fires contextmenu, not click; toggle before any menu."""
+    block = _node_contextmenu_block()
+    assert "event.ctrlKey || event.metaKey" in block
+    assert "event.preventDefault()" in block
+    assert "event.stopPropagation()" in block
+    toggle_at = block.index("_toggleMapEntitySelection(d.name)")
+    assert block.index("event.preventDefault()") < toggle_at
+    assert block.index("event.stopPropagation()") < toggle_at
+    assert "return" in block[toggle_at:toggle_at + 80]
+    assert toggle_at < block.index("_setMapSelection([d.name]")
+    assert toggle_at < block.index("showMapMultiSelectContextMenu")
+    assert toggle_at < block.index("showMapContextMenu")
+
+
+def test_modifier_contextmenu_on_svg_preserves_marquee():
+    """Control-drag starts marquee on pointerdown; contextmenu must not open Canvas menu."""
+    block = _svg_contextmenu_block()
+    modifier_at = block.index("event.ctrlKey || event.metaKey")
+    show_at = block.index("showMapCanvasContextMenu")
+    assert modifier_at < show_at
+    assert "event.preventDefault()" in block[:show_at]
+    assert "return" in block[modifier_at:show_at]

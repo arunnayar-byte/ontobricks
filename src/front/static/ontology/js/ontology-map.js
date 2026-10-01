@@ -819,10 +819,16 @@ async function initOntologyMap() {
         _setMapSelection([d.name]);
     });
     
-    // Right-click context menu for entities (suppressed in view mode)
+    // Right-click context menu for entities (suppressed in view mode).
+    // macOS Control-click emits contextmenu with no click; toggle then.
     nodeElements.on('contextmenu', function(event, d) {
         event.preventDefault();
         event.stopPropagation();
+
+        if (event.ctrlKey || event.metaKey) {
+            _toggleMapEntitySelection(d.name);
+            return;
+        }
 
         if (window.isActiveVersion === false) return;
 
@@ -927,6 +933,12 @@ async function initOntologyMap() {
     });
     
     svg.on('contextmenu', function(event) {
+        // Control-drag starts the marquee on pointerdown; suppress the
+        // synthesised contextmenu so the Canvas menu does not cancel it.
+        if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            return;
+        }
         // Only show canvas context menu if clicking on background (not on a node)
         if (event.target.tagName === 'svg' || event.target.closest('g.map-node') === null) {
             event.preventDefault();
