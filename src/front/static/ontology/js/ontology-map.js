@@ -593,7 +593,7 @@ async function initOntologyMap() {
             event.stopPropagation();
 
             // Clear entity selection, then highlight both endpoints
-            d3.selectAll('.map-node').classed('selected', false);
+            _clearMapSelection();
             highlightLink(d);
 
             // Show floating delete button near the hitarea (only in edit mode)
@@ -613,7 +613,7 @@ async function initOntologyMap() {
             if (window.isActiveVersion === false) return;
 
             // Clear entity selection, then highlight both endpoints
-            d3.selectAll('.map-node').classed('selected', false);
+            _clearMapSelection();
             highlightLink(d);
 
             showMapRelationshipContextMenu(event, d, container);
@@ -834,7 +834,8 @@ async function initOntologyMap() {
         if (mapConnectionMode) return;
         if (!(event.ctrlKey || event.metaKey)) return;
         if (event.button !== 0) return;
-        if (event.target.closest && event.target.closest('.map-node')) return;
+        if (event.target.tagName !== 'svg') return;
+        if (event.target.closest && event.target.closest('.map-node, .map-link, .map-link-hitarea, .map-link-label')) return;
 
         event.preventDefault();
         event.stopPropagation();

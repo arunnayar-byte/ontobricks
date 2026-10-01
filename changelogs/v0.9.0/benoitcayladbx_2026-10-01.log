@@ -86,3 +86,25 @@ Modified files:
 
 Tests: uv run --frozen pytest -q -m "not scenario" → 7208 passed, 315 skipped, 6 deselected, 1 xfailed, 32 warnings in 53.13s
 
+## Keep multi-select marquee and Set state in sync
+
+Context: Task 1 review found Ctrl/Cmd marquee starting on relationship
+paths/hitareas/labels, and relationship click/contextmenu clearing node
+CSS without clearing `mapSelectedEntityNames`.
+
+Changes:
+
+1. tests/units/front/test_ontology_map_multi_select.py
+   Source contracts for empty-canvas marquee and relationship Set sync.
+2. src/front/static/ontology/js/ontology-map.js
+   Start marquee only on the SVG background; clear selection via
+   `_clearMapSelection()` on relationship click and contextmenu.
+
+Modified files:
+- tests/units/front/test_ontology_map_multi_select.py
+- src/front/static/ontology/js/ontology-map.js
+- changelogs/v0.9.0/benoitcayladbx_2026-10-01.log
+
+Tests: uv run --frozen pytest -q -m "not scenario" → 7210 passed, 315 skipped, 6 deselected, 1 xfailed, 32 warnings in 48.98s
+
+
