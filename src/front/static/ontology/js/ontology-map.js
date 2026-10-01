@@ -23,10 +23,11 @@ let mapSelectedEntityNames    = new Set();
  * Apply a new entity selection set and sync node classes, neighbourhood
  * dimming, and the single-entity panel.
  * @param {Iterable<string>} names
- * @param {{openPanel?: boolean}} [options]
+ * @param {{openPanel?: boolean, closePanel?: boolean}} [options]
  */
 function _setMapSelection(names, options) {
     const openPanel = !(options && options.openPanel === false);
+    const closePanel = !(options && options.closePanel === false);
     const previousSize = mapSelectedEntityNames.size;
     mapSelectedEntityNames = new Set(names || []);
     d3.selectAll('.map-node').classed('selected', d => d && mapSelectedEntityNames.has(d.name));
@@ -41,7 +42,7 @@ function _setMapSelection(names, options) {
     }
 
     if (_mapClearHighlights) _mapClearHighlights();
-    if (previousSize !== 0 && typeof guardedCloseSharedPanel === 'function') {
+    if (closePanel && previousSize !== 0 && typeof guardedCloseSharedPanel === 'function') {
         guardedCloseSharedPanel();
     }
 }
@@ -53,8 +54,8 @@ function _toggleMapEntitySelection(name) {
     _setMapSelection(next, { openPanel: false });
 }
 
-function _clearMapSelection() {
-    _setMapSelection([], { openPanel: false });
+function _clearMapSelection(options) {
+    _setMapSelection([], { openPanel: false, closePanel: options && options.closePanel });
 }
 
 function handleMapSelectionKeyDown(event) {
@@ -593,7 +594,7 @@ async function initOntologyMap() {
             event.stopPropagation();
 
             // Clear entity selection, then highlight both endpoints
-            _clearMapSelection();
+            _clearMapSelection({ closePanel: false });
             highlightLink(d);
 
             // Show floating delete button near the hitarea (only in edit mode)
@@ -613,7 +614,7 @@ async function initOntologyMap() {
             if (window.isActiveVersion === false) return;
 
             // Clear entity selection, then highlight both endpoints
-            _clearMapSelection();
+            _clearMapSelection({ closePanel: false });
             highlightLink(d);
 
             showMapRelationshipContextMenu(event, d, container);
@@ -821,7 +822,7 @@ async function initOntologyMap() {
             .attr('fill', '#e9ecef')
             .attr('stroke', '#999')
             .attr('stroke-width', 1.5);
-        _clearMapSelection();
+        _clearMapSelection({ closePanel: false });
 
         // Guarded: this is now the only way out of the panel, so a pending
         // edit must be flushed rather than dropped.

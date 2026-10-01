@@ -107,4 +107,28 @@ Modified files:
 
 Tests: uv run --frozen pytest -q -m "not scenario" → 7210 passed, 315 skipped, 6 deselected, 1 xfailed, 32 warnings in 48.98s
 
+## Stop selection clear from racing panel switch
+
+Context: Re-review found relationship click calling guardedCloseSharedPanel
+via `_clearMapSelection` while `editPropertyByName`/`checkDirtyBeforeSwitch`
+already handles dirty entity-to-relationship switching. Canvas click also
+closed the panel twice.
+
+Changes:
+
+1. tests/units/front/test_ontology_map_multi_select.py
+   Contracts for closePanel:false on relationship handlers and a single
+   canvas-click guardedClose.
+2. src/front/static/ontology/js/ontology-map.js
+   Add closePanel to `_setMapSelection`/`_clearMapSelection`; skip panel
+   close on relationship clear and canvas clear.
+
+Modified files:
+- tests/units/front/test_ontology_map_multi_select.py
+- src/front/static/ontology/js/ontology-map.js
+- changelogs/v0.9.0/benoitcayladbx_2026-10-01.log
+
+Tests: uv run --frozen pytest -q -m "not scenario" → 7212 passed, 315 skipped, 6 deselected, 1 xfailed, 32 warnings in 50.16s
+
+
 

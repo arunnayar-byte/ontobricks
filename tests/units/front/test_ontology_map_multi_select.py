@@ -57,5 +57,27 @@ def _relationship_hitarea_block():
 
 def test_relationship_selection_clears_entity_set():
     hit = _relationship_hitarea_block()
-    assert hit.count("_clearMapSelection()") == 2
+    assert hit.count("_clearMapSelection({ closePanel: false })") == 2
     assert "d3.selectAll('.map-node').classed('selected', false)" not in hit
+    assert "guardedCloseSharedPanel" not in hit
+    assert "await guardedCloseSharedPanel" not in hit
+    assert "editPropertyByName(d.name)" in hit
+
+
+def test_selection_helpers_support_close_panel_option():
+    js = MAP_JS.read_text(encoding="utf-8")
+    start = js.index("function _setMapSelection(names, options)")
+    end = js.index("function handleMapSelectionKeyDown(event)", start)
+    helpers = js[start:end]
+    assert "options.closePanel === false" in helpers
+    assert "function _clearMapSelection(options)" in helpers
+
+
+def test_canvas_click_clears_selection_then_closes_panel_once():
+    block = _map_init_block()
+    start = block.index("svg.on('click', function()")
+    end = block.index("function startMapMarquee(event)", start)
+    canvas = block[start:end]
+    assert "_clearMapSelection({ closePanel: false })" in canvas
+    assert canvas.count("guardedCloseSharedPanel()") == 1
+    assert "await guardedCloseSharedPanel" not in canvas
