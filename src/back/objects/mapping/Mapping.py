@@ -2064,9 +2064,11 @@ class Mapping:
             ("id_column", ent.get("id_column", "")),
             ("label_column", ent.get("label_column", "")),
         ]
+        excluded_attrs = set(ent.get("excluded_attributes") or [])
         bound += [
             (f"attribute:{attr}", col)
             for attr, col in (ent.get("attribute_mappings") or {}).items()
+            if attr not in excluded_attrs
         ]
         return [
             check
@@ -2102,12 +2104,15 @@ class Mapping:
                 available |= live_columns[triple]
             return available, ", ".join(".".join(t) for t in triples)
 
+        excluded_attrs = set(rel.get("excluded_attributes") or [])
         checks: List[Dict[str, str]] = []
         for side, key, legacy in (
             ("source", "source_id_column", "source_column"),
             ("target", "target_id_column", "target_column"),
         ):
             column = rel.get(key) or rel.get(legacy, "")
+            if not column or column in excluded_attrs:
+                continue
             available, label = _columns_for(side)
             if check := self._drift_check(key, column, available, label):
                 checks.append(check)
@@ -2293,8 +2298,9 @@ class Mapping:
         Checks column existence in source SQL, entity-relationship
         cross-references, ontology consistency, and — when *client* is
         provided — verifies that the app's SQL principal has SELECT on
-        every distinct source table referenced by the mapping, and that
-        each SQL query actually returns at least one row.
+        every distinct source table referenced by the mapping. Row counts
+        are recorded on each item; an empty source is a warning, a
+        successful query with rows is not treated as an issue.
 
         The body is composed of small, focused helpers (``_diagnose_entity``,
         ``_diagnose_relationship``, ``_build_entity_lookup``,
@@ -2343,8 +2349,10 @@ class Mapping:
                 sql = (ent.get("sql_query") or "").strip()
                 if sql:
                     data_check, count = self._probe_query_rows(sql, client)
-                    result["checks"].append(data_check)
                     result["row_count"] = count
+                    # Rows present is informational (row_count badge), not an issue.
+                    if data_check["status"] != "ok":
+                        result["checks"].append(data_check)
                 # A parseable projection is already validated above; the drift
                 # checks skip those mappings themselves.
                 result["checks"].extend(self._entity_drift_checks(ent, live_columns))
@@ -2354,8 +2362,9 @@ class Mapping:
                 sql = (rel.get("sql_query") or "").strip()
                 if sql:
                     data_check, count = self._probe_query_rows(sql, client)
-                    result["checks"].append(data_check)
                     result["row_count"] = count
+                    if data_check["status"] != "ok":
+                        result["checks"].append(data_check)
                 result["checks"].extend(
                     self._relationship_drift_checks(rel, live_columns)
                 )
@@ -2461,6 +2470,27 @@ class Mapping:
         return worst
 
     @staticmethod
+    def _column_in_output(column: str, available_cols: Optional[Set[str]]) -> bool:
+        """Return True when *column* is one of the SELECT output names.
+
+        Matches the bare name and Spark implicit aliases (``obj_id s`` → ``s``)
+        so leftover excluded columns and ``AS``-less aliases are not reported
+        as missing.
+        """
+        if not column:
+            return True
+        if not available_cols:
+            return True
+        needle = column.strip().strip('`"')
+        if needle in available_cols or column in available_cols:
+            return True
+        for name in available_cols:
+            token = str(name).replace("`", "").strip().split()[-1]
+            if token == needle:
+                return True
+        return False
+
+    @staticmethod
     def _diagnose_entity(
         ent: Dict[str, Any], ont_index: Dict[str, Dict]
     ) -> Dict[str, Any]:
@@ -2480,6 +2510,7 @@ class Mapping:
         id_col = ent.get("id_column", "")
         label_col = ent.get("label_column", "")
         attr_map = ent.get("attribute_mappings", {})
+        excluded_attrs = set(ent.get("excluded_attributes") or [])
 
         checks: List[Dict[str, str]] = []
         available_cols = (
@@ -2507,7 +2538,7 @@ class Mapping:
                     "detail": "No ID column defined",
                 }
             )
-        elif available_cols and id_col not in available_cols:
+        elif available_cols and not Mapping._column_in_output(id_col, available_cols):
             checks.append(
                 {
                     "check": "id_column",
@@ -2525,7 +2556,7 @@ class Mapping:
             )
 
         if label_col:
-            if available_cols and label_col not in available_cols:
+            if available_cols and not Mapping._column_in_output(label_col, available_cols):
                 checks.append(
                     {
                         "check": "label_column",
@@ -2543,9 +2574,9 @@ class Mapping:
                 )
 
         for attr_name, col_name in attr_map.items():
-            if not col_name:
+            if not col_name or attr_name in excluded_attrs:
                 continue
-            if available_cols and col_name not in available_cols:
+            if available_cols and not Mapping._column_in_output(col_name, available_cols):
                 checks.append(
                     {
                         "check": f"attribute:{attr_name}",
@@ -2623,6 +2654,8 @@ class Mapping:
         tgt_label = rel.get("target_class_label", "")
         src_id_col = rel.get("source_id_column") or rel.get("source_column", "")
         tgt_id_col = rel.get("target_id_column") or rel.get("target_column", "")
+        attr_map = rel.get("attribute_mappings") or {}
+        excluded_attrs = set(rel.get("excluded_attributes") or [])
 
         checks: List[Dict[str, str]] = []
         available_cols = (
@@ -2642,39 +2675,67 @@ class Mapping:
                 {"check": "source", "status": "ok", "detail": "SQL query defined"}
             )
 
-        if src_id_col and available_cols and src_id_col not in available_cols:
-            checks.append(
-                {
-                    "check": "source_id_column",
-                    "status": "error",
-                    "detail": f"Column '{src_id_col}' not in source output {sorted(available_cols)}",
-                }
-            )
-        elif src_id_col:
-            checks.append(
-                {
-                    "check": "source_id_column",
-                    "status": "ok",
-                    "detail": f"Column '{src_id_col}' found",
-                }
-            )
+        if src_id_col and src_id_col not in excluded_attrs:
+            if available_cols and not Mapping._column_in_output(
+                src_id_col, available_cols
+            ):
+                checks.append(
+                    {
+                        "check": "source_id_column",
+                        "status": "error",
+                        "detail": f"Column '{src_id_col}' not in source output {sorted(available_cols)}",
+                    }
+                )
+            else:
+                checks.append(
+                    {
+                        "check": "source_id_column",
+                        "status": "ok",
+                        "detail": f"Column '{src_id_col}' found",
+                    }
+                )
 
-        if tgt_id_col and available_cols and tgt_id_col not in available_cols:
-            checks.append(
-                {
-                    "check": "target_id_column",
-                    "status": "error",
-                    "detail": f"Column '{tgt_id_col}' not in source output {sorted(available_cols)}",
-                }
-            )
-        elif tgt_id_col:
-            checks.append(
-                {
-                    "check": "target_id_column",
-                    "status": "ok",
-                    "detail": f"Column '{tgt_id_col}' found",
-                }
-            )
+        if tgt_id_col and tgt_id_col not in excluded_attrs:
+            if available_cols and not Mapping._column_in_output(
+                tgt_id_col, available_cols
+            ):
+                checks.append(
+                    {
+                        "check": "target_id_column",
+                        "status": "error",
+                        "detail": f"Column '{tgt_id_col}' not in source output {sorted(available_cols)}",
+                    }
+                )
+            else:
+                checks.append(
+                    {
+                        "check": "target_id_column",
+                        "status": "ok",
+                        "detail": f"Column '{tgt_id_col}' found",
+                    }
+                )
+
+        for attr_name, col_name in attr_map.items():
+            if not col_name or attr_name in excluded_attrs or col_name in excluded_attrs:
+                continue
+            if available_cols and not Mapping._column_in_output(
+                col_name, available_cols
+            ):
+                checks.append(
+                    {
+                        "check": f"attribute:{attr_name}",
+                        "status": "error",
+                        "detail": f"Column '{col_name}' not in source output {sorted(available_cols)}",
+                    }
+                )
+            elif available_cols:
+                checks.append(
+                    {
+                        "check": f"attribute:{attr_name}",
+                        "status": "ok",
+                        "detail": f"Column '{col_name}' found",
+                    }
+                )
 
         resolved_src = cls._resolve_entity(entity_lookup, src_class, src_label)
         if resolved_src:

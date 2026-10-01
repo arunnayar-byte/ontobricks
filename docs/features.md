@@ -35,6 +35,7 @@
 - **Relationship Direction**: Control forward, reverse, or bidirectional relationships with visual indicators.
 - **R2RML Generation**: Automatic generation of W3C-compliant R2RML mappings from visual configuration. Excluded attributes are never emitted as `rr:predicateObjectMap` triples.
 - **Unmap all**: Clear every entity and relationship mapping from both **Mapping → Information** and **Mapping → Studio** via a shared confirmation dialog (`Unmap all`). Attribute exclusions stamped on ontology objects are re-evaluated after the wipe so the Studio canvas stays consistent.
+- **Mapping Diagnostics**: **Mapping → Diagnostics** lists only warnings and errors. Queries that return rows are informational (row count badge), not failures. Excluded attributes and relationship ID columns are not reported as missing, including Spark implicit aliases (`obj_id s` → `s`).
 
 ## Knowledge Graph (Sync & Explore)
 - **Two Layers**: Every build materializes a Delta view (Unity Catalog, governance) and a Graph DB engine (Lakebase Postgres today; pluggable behind `GraphDBFactory`).

@@ -69,6 +69,8 @@ class TwinMapping:
 
         For ``SELECT col1 AS A, col2 AS B FROM ...`` returns ``{"A", "B"}``.
         For ``SELECT col1, col2 FROM ...`` returns ``{"col1", "col2"}``.
+        For Spark implicit aliases (``SELECT obj_id s, parent_obj_id t``)
+        returns ``{"s", "t"}``.
         Returns ``None`` when the SELECT clause cannot be parsed reliably.
         """
         if not sql_query:
@@ -99,11 +101,15 @@ class TwinMapping:
                 return None
             alias_m = TwinMapping._ALIAS_RE.search(part)
             if alias_m:
-                columns.add(alias_m.group(1))
+                columns.add(alias_m.group(1).strip('`"'))
             else:
-                token = part.rsplit(".", 1)[-1].strip().strip('`"')
-                if token:
-                    columns.add(token)
+                tokens = part.replace("`", "").split()
+                if len(tokens) >= 2 and re.fullmatch(r"[A-Za-z_][\w]*", tokens[-1]):
+                    columns.add(tokens[-1])
+                else:
+                    token = part.rsplit(".", 1)[-1].strip().strip('`"')
+                    if token:
+                        columns.add(token)
         return columns if columns else None
 
     # ------------------------------------------------------------------

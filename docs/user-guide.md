@@ -690,6 +690,15 @@ Mapping validation checks:
 
 A green checkmark appears in the navbar when all mappings are complete.
 
+### Mapping Diagnostics
+
+**Mapping → Diagnostics** lists only failed or warning checks. Entities and
+relationships whose queries return rows are not treated as failures; the row
+count stays on the item as information. Excluded (unmapped) attributes and
+relationship ID columns are skipped — they do not raise a missing-column
+issue. Spark implicit aliases such as ``obj_id s`` are treated as column
+``s``.
+
 ### Source Schema Drift
 
 A mapping can be perfectly well-formed and still be broken by a change made

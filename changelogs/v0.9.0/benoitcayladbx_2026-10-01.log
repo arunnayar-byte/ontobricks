@@ -212,7 +212,44 @@ Modified files:
 
 Tests: uv run --frozen pytest -q -m "not scenario" → 7225 passed, 315 skipped, 6 deselected, 1 xfailed, 32 warnings in 46.81s
 
+## List only Mapping Diagnostics issues
 
+Context: Mapping Diagnostics listed every passing check, treated queries
+that return rows as a diagnostic result, and could still flag excluded
+(unmapped) attributes as missing columns. The page should show issues
+only and keep row counts informational.
+
+Changes:
+
+1. src/back/objects/mapping/Mapping.py
+   Skip excluded attributes in column and drift checks; record row_count
+   without adding a passing has_data check.
+2. src/front/static/mapping/js/mapping-diagnostics.js
+   Render warning/error checks only and hide clean entity, relationship,
+   and permission rows.
+3. src/front/templates/partials/mapping/_mapping_diagnostics.html
+   Update the section subtitle to match the issues-only behaviour.
+4. tests/units/mapping/test_mapping_service.py
+   Cover excluded attributes and row-count vs has_data status.
+5. tests/units/mapping/test_schema_drift.py
+   Cover excluded attributes skipped by drift.
+6. tests/units/front/test_schema_drift_ui.py
+   Contract that the Diagnostics UI filters to issues.
+7. docs/user-guide.md / docs/features.md
+   Document issues-only Diagnostics and excluded-attribute skipping.
+
+Modified files:
+- src/back/objects/mapping/Mapping.py
+- src/front/static/mapping/js/mapping-diagnostics.js
+- src/front/templates/partials/mapping/_mapping_diagnostics.html
+- tests/units/mapping/test_mapping_service.py
+- tests/units/mapping/test_schema_drift.py
+- tests/units/front/test_schema_drift_ui.py
+- docs/user-guide.md
+- docs/features.md
+- changelogs/v0.9.0/benoitcayladbx_2026-10-01.log
+
+Tests: uv run --frozen pytest -q -m "not scenario" → 7223 passed, 315 skipped, 6 deselected, 1 xfailed, 32 warnings in 47.70s
 
 ## Harden Ontology Studio multi-select interactions
 
@@ -246,6 +283,35 @@ Modified files:
 - changelogs/v0.9.0/benoitcayladbx_2026-10-01.log
 
 Tests: uv run --frozen pytest -q -m "not scenario" → 7237 passed, 325 skipped, 6 deselected, 1 xfailed
+
+## Skip excluded relationship diagnostic columns
+
+Context: Relationship Diagnostics still errored on bound IDs that were
+excluded or written as Spark implicit aliases (``source_id_column``
+``s`` vs SELECT ``obj_id s``). Match the entity behaviour: do not raise
+missing-column issues for those cases.
+
+Changes:
+
+1. src/back/objects/mapping/Mapping.py
+   Skip excluded relationship ID/attribute columns; match implicit
+   aliases in SELECT output.
+2. src/back/objects/digitaltwin/TwinMapping.py
+   Treat ``SELECT obj_id s`` as output column ``s``.
+3. tests/units/mapping/test_mapping_service.py
+   Cover implicit aliases, excluded relationship columns, and real misses.
+4. docs/user-guide.md / docs/features.md
+   Document relationship Diagnostics column skipping.
+
+Modified files:
+- src/back/objects/mapping/Mapping.py
+- src/back/objects/digitaltwin/TwinMapping.py
+- tests/units/mapping/test_mapping_service.py
+- docs/user-guide.md
+- docs/features.md
+- changelogs/v0.9.0/benoitcayladbx_2026-10-01.log
+
+Tests: uv run --frozen pytest -q -m "not scenario" → 7241 passed, 325 skipped, 6 deselected, 1 xfailed, 32 warnings in 48.05s
 
 ## Add Studio Select toolbar toggle
 
