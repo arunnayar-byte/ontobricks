@@ -621,6 +621,7 @@ menu** (a menu captures the selection it was opened for).
 
 | Gesture | Behaviour |
 |---------|-----------|
+| Toolbar **Select** toggle | While on, a click toggles membership (panel stays closed) and a primary-button drag on empty canvas marquees; pan is disabled except for wheel zoom. Ctrl/Cmd still works when the toggle is off |
 | Ctrl/Cmd-click on an entity | Toggle membership; the panel does not open |
 | Ctrl/Cmd-drag on empty canvas | Marquee; on `pointerup` the selection is replaced by the entities inside. An empty marquee leaves the selection unchanged |
 | Plain click on entity / empty canvas | Select one entity (opens panel) / clear selection |

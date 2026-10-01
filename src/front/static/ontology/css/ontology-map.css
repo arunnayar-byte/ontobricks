@@ -58,6 +58,14 @@
     height: 100%;
 }
 
+#ontology-map-container.map-select-mode {
+    cursor: crosshair;
+}
+
+#ontology-map-container.map-select-mode .map-node {
+    cursor: pointer;
+}
+
 /* Entity nodes - icon only, no circles */
 .map-node {
     cursor: grab;

@@ -246,3 +246,40 @@ Modified files:
 - changelogs/v0.9.0/benoitcayladbx_2026-10-01.log
 
 Tests: uv run --frozen pytest -q -m "not scenario" → 7237 passed, 325 skipped, 6 deselected, 1 xfailed
+
+## Add Studio Select toolbar toggle
+
+Context: Multi-select on Ontology Studio was only discoverable via Ctrl/Cmd
+gestures. A toolbar Select button now turns click-to-toggle and empty-canvas
+marquee on without a modifier.
+
+Changes:
+
+1. src/front/templates/partials/ontology/_ontology_map.html
+   Add an icon-only Select toggle in the layout/display cluster.
+2. src/front/static/ontology/js/ontology-map.js
+   Share Ctrl/Cmd and toolbar Select through `_isMapSelectGesture`.
+3. src/front/static/ontology/css/ontology-map.css
+   Crosshair cursor while select mode is on.
+4. tests/units/front/test_button_design_contract.py
+   Require the Select control in the joined display cluster.
+5. tests/units/front/test_ontology_map_multi_select.py
+   Contract the shared gesture helper, init bind, and marquee reuse.
+6. tests/e2e/ontology/test_studio_multi_select_flows.py
+   Click Select, toggle two entities, and marquee without a modifier.
+7. docs/user-guide.md / docs/features.md / docs/architecture.md
+   Document the toolbar Select toggle.
+
+Modified files:
+- src/front/templates/partials/ontology/_ontology_map.html
+- src/front/static/ontology/js/ontology-map.js
+- src/front/static/ontology/css/ontology-map.css
+- tests/units/front/test_button_design_contract.py
+- tests/units/front/test_ontology_map_multi_select.py
+- tests/e2e/ontology/test_studio_multi_select_flows.py
+- docs/user-guide.md
+- docs/features.md
+- docs/architecture.md
+- changelogs/v0.9.0/benoitcayladbx_2026-10-01.log
+
+Tests: uv run --frozen pytest -q -m "not scenario" → 7245 passed, 326 skipped, 6 deselected, 1 xfailed, 32 warnings in 54.28s

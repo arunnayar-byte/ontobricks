@@ -155,6 +155,21 @@ def test_ontology_assistant_has_no_floating_action_button():
     assert "btn btn-sm btn-outline-secondary" in partial
 
 
+def test_ontology_designer_select_toggle_is_in_the_display_cluster():
+    """Select mode is a display/tool toggle, same cluster as grid."""
+    partial = _read(MAP_PARTIAL)
+    groups = re.findall(r'<div class="btn-group[^"]*"[^>]*>(.*?)</div>', partial, re.DOTALL)
+    grouped = "".join(groups)
+    assert 'id="mapToggleSelect"' in grouped
+    assert 'id="mapToggleGrid"' in grouped
+    start = grouped.index('id="mapToggleSelect"')
+    tag = grouped[start:grouped.index(">", start)]
+    assert 'aria-pressed="false"' in tag
+    assert 'title="Select entities (or hold Ctrl/Cmd)"' in tag
+    css = _read(REPO_ROOT / "src/front/static/ontology/css/ontology-map.css")
+    assert "#ontology-map-container.map-select-mode" in css
+
+
 def test_ontology_designer_grid_toggle_is_in_the_display_cluster():
     """Dot-grid visibility is a display toggle, same cluster as inheritance."""
     partial = _read(MAP_PARTIAL)

@@ -254,3 +254,19 @@ def test_escape_outside_studio_keeps_selection(studio):
     studio.keyboard.press("Escape")
     studio.wait_for_timeout(150)
     assert _selected(studio) == _ALL
+
+
+def test_select_toolbar_toggles_without_modifier(studio):
+    studio.locator("#mapToggleSelect").click()
+    studio.wait_for_timeout(100)
+    assert studio.locator("#mapToggleSelect").get_attribute("aria-pressed") == "true"
+
+    geo = _geometry(studio)
+    studio.mouse.click(geo["nodes"]["Alpha"]["x"], geo["nodes"]["Alpha"]["y"])
+    studio.wait_for_timeout(150)
+    studio.mouse.click(geo["nodes"]["Beta"]["x"], geo["nodes"]["Beta"]["y"])
+    studio.wait_for_timeout(150)
+    assert _selected(studio) == ["Alpha", "Beta"]
+
+    _marquee_around_all(studio, None)
+    assert _selected(studio) == _ALL

@@ -18,7 +18,17 @@ let ontologyMapNodes  = [];   // live reference to node data (set by initOntolog
 let _mapHighlightNeighborhood = null;  // set by initOntologyMap, used by focusMapEntity
 let _mapClearHighlights       = null;  // set by initOntologyMap, used by focusMapEntity
 let mapSelectedEntityNames    = new Set();
+let mapSelectMode             = false;
 let _mapCanvasClickSuppressUntil = 0;  // performance.now() deadline; 0 = not armed
+
+/**
+ * True for Ctrl/Cmd gestures and while the Studio Select toolbar is on.
+ * @param {Event} event
+ * @returns {boolean}
+ */
+function _isMapSelectGesture(event) {
+    return !!(mapSelectMode || (event && (event.ctrlKey || event.metaKey)));
+}
 
 /**
  * A Ctrl/Cmd marquee ends on ``pointerup``; the browser then dispatches a
@@ -254,6 +264,39 @@ function initMapGridToggle() {
 }
 
 /**
+ * Sync the Select toolbar button and canvas cursor with ``mapSelectMode``.
+ */
+function applyMapSelectMode() {
+    const container = document.getElementById('ontology-map-container');
+    const btn = document.getElementById('mapToggleSelect');
+    if (container) {
+        container.classList.toggle('map-select-mode', mapSelectMode);
+    }
+    if (btn) {
+        btn.classList.toggle('active', mapSelectMode);
+        btn.setAttribute('aria-pressed', mapSelectMode ? 'true' : 'false');
+        btn.title = mapSelectMode
+            ? 'Exit select mode (plain click opens the panel)'
+            : 'Select entities (or hold Ctrl/Cmd)';
+        btn.setAttribute('aria-label', btn.title);
+    }
+}
+
+/**
+ * Bind the header Select toggle once. Safe to call from every map init.
+ */
+function initMapSelectToggle() {
+    const btn = document.getElementById('mapToggleSelect');
+    applyMapSelectMode();
+    if (!btn || btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.onclick = () => {
+        mapSelectMode = !mapSelectMode;
+        applyMapSelectMode();
+    };
+}
+
+/**
  * Initialize the Ontology Designer visualization
  */
 async function initOntologyMap() {
@@ -263,6 +306,7 @@ async function initOntologyMap() {
     _clearMapSelection({ closePanel: false });
 
     initMapGridToggle();
+    initMapSelectToggle();
     showOntologyMapLoading(true);
     
     const container = document.getElementById('ontology-map-container');
@@ -473,7 +517,7 @@ async function initOntologyMap() {
     ontologyMapZoom.filter((event) => {
         if (event.type === 'wheel') return true;
         if (event.button) return false;
-        if (event.ctrlKey || event.metaKey) return false;
+        if (_isMapSelectGesture(event)) return false;
         return true;
     });
 
@@ -852,7 +896,7 @@ async function initOntologyMap() {
             .attr('stroke', '#999')
             .attr('stroke-width', 1.5);
 
-        if (event.ctrlKey || event.metaKey) {
+        if (_isMapSelectGesture(event)) {
             _toggleMapEntitySelection(d.name);
             return;
         }
@@ -907,12 +951,13 @@ async function initOntologyMap() {
 
     function startMapMarquee(event) {
         if (mapConnectionMode) return;
-        if (!(event.ctrlKey || event.metaKey)) return;
+        if (!_isMapSelectGesture(event)) return;
         if (event.button !== 0) return;
         if (event.target.tagName !== 'svg') return;
 
         event.preventDefault();
         event.stopPropagation();
+        const fromSelectMode = mapSelectMode;
 
         const svgNode = svg.node();
         const pointerToGraph = (evt) => d3.zoomTransform(svgNode).invert(d3.pointer(evt, svgNode));
@@ -940,7 +985,7 @@ async function initOntologyMap() {
         }
 
         function onMove(evt) {
-            if (!(evt.ctrlKey || evt.metaKey)) {
+            if (!fromSelectMode && !_isMapSelectGesture(evt)) {
                 // Modifier released mid-drag: abandon the marquee but keep
                 // listening so the trailing pointerup/click is still absorbed.
                 cancelled = true;
@@ -969,7 +1014,7 @@ async function initOntologyMap() {
             // pointerup; it must neither clear a fresh selection nor undo a
             // no-op marquee.
             _suppressNextMapCanvasClick();
-            if (cancelled || !(evt.ctrlKey || evt.metaKey)) return;
+            if (cancelled || (!fromSelectMode && !_isMapSelectGesture(evt))) return;
             const namesInside = ontologyMapNodes
                 .filter(n => n.x >= minX && n.x <= maxX && n.y >= minY && n.y <= maxY)
                 .map(n => n.name);

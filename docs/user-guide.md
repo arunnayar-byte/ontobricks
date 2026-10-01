@@ -184,9 +184,10 @@ Open **Ontology → Studio** for the force-directed map of every class. This is 
 **Select**
 
 1. Click an entity to select only that entity and open its detail panel (1-hop neighbourhood highlight stays as today).
-2. Hold **Ctrl** (Windows/Linux) or **Cmd** (macOS) and click an entity to add or remove it. Modifier-click does not open the panel.
-3. Hold **Ctrl/Cmd** and drag on empty canvas to draw a marquee. On mouseup the selection becomes every entity whose node sits inside the rectangle. A marquee that contains no entities leaves the current selection unchanged.
-4. Click empty canvas to clear the selection. Press **Escape** to clear a multi-selection. If connection mode is active, Escape ends connection mode first.
+2. Click the toolbar **Select** button (bounding-box icon) to enter select mode: clicks toggle entities and an empty-canvas drag draws a marquee, without holding a modifier. Click the button again to leave select mode.
+3. Hold **Ctrl** (Windows/Linux) or **Cmd** (macOS) and click an entity to add or remove it (works even when select mode is off). Modifier-click does not open the panel.
+4. Hold **Ctrl/Cmd** and drag on empty canvas to draw a marquee. On mouseup the selection becomes every entity whose node sits inside the rectangle. A marquee that contains no entities leaves the current selection unchanged.
+5. Click empty canvas to clear the selection. Press **Escape** to clear a multi-selection. If connection mode is active, Escape ends connection mode first.
 
 **Move and delete**
 

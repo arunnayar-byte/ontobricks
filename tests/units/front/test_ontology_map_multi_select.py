@@ -215,9 +215,9 @@ def test_marquee_pointerup_arms_click_suppression_and_checks_modifier():
     marquee = _marquee_block()
     up = marquee[marquee.index("function onUp(evt)"):]
     assert "_suppressNextMapCanvasClick()" in up
-    assert "evt.ctrlKey || evt.metaKey" in up
-    # Selection changes only after the modifier check passed.
-    assert up.index("evt.ctrlKey || evt.metaKey") < up.index("_setMapSelection(namesInside")
+    assert "_isMapSelectGesture(evt)" in up
+    # Selection changes only after the gesture check passed.
+    assert up.index("_isMapSelectGesture(evt)") < up.index("_setMapSelection(namesInside")
 
 
 def test_marquee_cleans_up_on_pointercancel_and_blur():
@@ -304,6 +304,32 @@ def test_escape_ignores_events_from_modal_even_after_show_class_removed():
     assert "document.body.classList.contains('modal-open')" in block
     assert block.index("event.target.closest('.modal')") < block.index("_clearMapSelection()")
     assert block.index("modal-open") < block.index("_clearMapSelection()")
+
+
+def test_select_mode_helper_treats_toolbar_and_modifiers_as_equivalent():
+    js = MAP_JS.read_text(encoding="utf-8")
+    block = _function_block(js, "function _isMapSelectGesture(")
+    assert "mapSelectMode" in block
+    assert "event.ctrlKey || event.metaKey" in block
+
+
+def test_select_mode_toggle_is_bound_on_map_init():
+    js = MAP_JS.read_text(encoding="utf-8")
+    assert "function initMapSelectToggle()" in js
+    assert "getElementById('mapToggleSelect')" in js
+    init = _map_init_block()
+    assert "initMapSelectToggle()" in init
+    assert init.index("initMapSelectToggle()") < init.index("showOntologyMapLoading(true)")
+
+
+def test_select_mode_click_and_marquee_reuse_the_shared_gesture_helper():
+    block = _map_init_block()
+    click = block[block.index("nodeElements.on('click'"):block.index("nodeElements.on('contextmenu'")]
+    assert "_isMapSelectGesture(event)" in click
+    marquee = _marquee_block()
+    assert "_isMapSelectGesture(event)" in marquee
+    zoom = block[block.index("ontologyMapZoom.filter"):block.index("svg.call(ontologyMapZoom)")]
+    assert "_isMapSelectGesture(event)" in zoom
 
 
 def test_business_view_position_callback_documents_all_arguments():
