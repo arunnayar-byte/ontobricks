@@ -120,3 +120,28 @@ def test_multi_delete_mutates_and_saves_once():
     assert "typeof showConfirmDialog !== 'function'" in block
     assert block.count("showConfirmDialog(") == 1
     assert "async function createBusinessViewFromSelection(names)" in js
+
+
+def test_multi_business_view_keeps_only_internal_links():
+    js = MAP_JS.read_text(encoding="utf-8")
+    block = _function_block(js, "async function createBusinessViewFromSelection(")
+    assert "const visibleNames = new Set(names)" in block
+    assert "visibleNames.has(source) && visibleNames.has(target)" in block
+    assert "let viewName = 'Auto_Selection'" in block
+    assert "const cx = 450, cy = 280, radius = 230" in block
+    assert "hiddenEntities" in block
+    assert "hiddenRelationships" in block
+    assert "hiddenInheritances" in block
+    assert "/domain/design-views/create" in block
+    assert "/domain/design-views/switch" in block
+    assert "/domain/design-views/save-current" in block
+    assert "SidebarNav.switchTo('design')" in block
+    assert "neighbourNames" not in block
+
+
+def test_single_entity_business_view_stays_one_hop():
+    js = MAP_JS.read_text(encoding="utf-8")
+    block = _function_block(js, "async function createBusinessViewFromEntity(")
+    assert "let viewName = `Auto_${selectedName}`" in block
+    assert "const neighbourNames = new Set()" in block
+    assert "const allEntityNames = [selectedName, ...Array.from(neighbourNames)]" in block

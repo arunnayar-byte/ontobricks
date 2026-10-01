@@ -177,6 +177,29 @@ Click the direction indicator to cycle through options.
 
 All changes in the Design view are automatically saved. You'll see a brief "Saving..." indicator when changes are persisted.
 
+### Ontology Studio map (full graph)
+
+Open **Ontology → Studio** for the force-directed map of every class. This is the full-ontology map, not a single Business View canvas.
+
+**Select**
+
+1. Click an entity to select only that entity and open its detail panel (1-hop neighbourhood highlight stays as today).
+2. Hold **Ctrl** (Windows/Linux) or **Cmd** (macOS) and click an entity to add or remove it. Modifier-click does not open the panel.
+3. Hold **Ctrl/Cmd** and drag on empty canvas to draw a marquee. On mouseup the selection becomes every entity whose node sits inside the rectangle. A marquee that contains no entities leaves the current selection unchanged.
+4. Click empty canvas to clear the selection. Press **Escape** to clear a multi-selection. If connection mode is active, Escape ends connection mode first.
+
+**Move and delete**
+
+1. Drag any node that is already in a multi-selection to translate every selected node by the same amount.
+2. Right-click a selected set to open the multi-select menu. Choose **Delete N entities**, confirm once, and the map saves once. Cancel leaves the ontology unchanged.
+
+**Create a Business View from the selection**
+
+1. Right-click a multi-selection and choose **Create Business View**.
+2. OntoBricks creates a view named `Auto_Selection`. If that name already exists, it uses `Auto_Selection_1`, `Auto_Selection_2`, and so on.
+3. The view contains **only** the selected entities. Object-property and inheritance links are included only when **both** endpoints are selected. Neighbours are not pulled in.
+4. The app then switches to **Business Views** with that layout. Right-click a **single** entity still creates `Auto_<entityName>` plus that entity's 1-hop neighbourhood.
+
 ### Option B: Form-Based Interface
 
 #### Configure Basic Information

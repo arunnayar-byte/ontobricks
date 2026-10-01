@@ -1520,11 +1520,162 @@ async function createBusinessViewFromEntity(entityData) {
 
 /**
  * Create a Business View from the current multi-selection.
- * Selected-set generation (Auto_Selection, internal links only) is Task 3.
+ * Contains exactly the selected entities plus object-property / inheritance
+ * links whose both endpoints are selected. Named Auto_Selection[_N].
  * @param {string[]} names
  */
 async function createBusinessViewFromSelection(names) {
-    // Task 3 implements Auto_Selection generation from `names`.
+    if (!names || !names.length) return;
+    try {
+        const visibleNames = new Set(names);
+        const relLinks = [];
+        const inhLinks = [];
+
+        ontologyMapLinks.forEach(link => {
+            const source = _resolveLinkEndpoint(link.source);
+            const target = _resolveLinkEndpoint(link.target);
+            if (!(visibleNames.has(source) && visibleNames.has(target))) return;
+            if (link.type === 'inheritance') {
+                inhLinks.push({ source, target });
+            } else {
+                relLinks.push({ name: link.name, source, target });
+            }
+        });
+
+        let viewName = 'Auto_Selection';
+        let existingViews = [];
+        try {
+            const viewsResp = await fetch('/domain/design-views');
+            if (viewsResp.ok) {
+                const viewsData = await viewsResp.json();
+                existingViews = viewsData.views || [];
+            }
+        } catch (_) { /* ignore – proceed with attempted name */ }
+
+        if (existingViews.includes(viewName)) {
+            let suffix = 1;
+            while (existingViews.includes(`${viewName}_${suffix}`)) suffix++;
+            viewName = `${viewName}_${suffix}`;
+        }
+
+        const cx = 450, cy = 280, radius = 230;
+        const allEntityNames = Array.from(visibleNames);
+        const entityIdMap = new Map();
+        allEntityNames.forEach((name, i) => {
+            entityIdMap.set(name, `ent_${Date.now()}_${i}`);
+        });
+
+        const entities = allEntityNames.map((name, i) => {
+            const angle = allEntityNames.length === 1
+                ? 0
+                : (2 * Math.PI / allEntityNames.length) * i;
+            const x = Math.round(cx + radius * Math.cos(angle));
+            const y = Math.round(cy + radius * Math.sin(angle));
+            const nodeData = ontologyMapNodes.find(n => n.name === name);
+            return {
+                id: entityIdMap.get(name),
+                name,
+                x,
+                y,
+                properties: nodeData ? (nodeData.dataProperties || null) : null,
+                color: null,
+            };
+        });
+
+        const relationships = relLinks
+            .filter(l => entityIdMap.has(l.source) && entityIdMap.has(l.target))
+            .map((l, i) => ({
+                id: `rel_${Date.now()}_${i}`,
+                name: l.name,
+                label: l.name,
+                sourceEntityId: entityIdMap.get(l.source),
+                targetEntityId: entityIdMap.get(l.target),
+                sourceAnchor: 'right',
+                targetAnchor: 'left',
+            }));
+
+        const inheritances = inhLinks
+            .filter(l => entityIdMap.has(l.source) && entityIdMap.has(l.target))
+            .map((l, i) => ({
+                id: `inh_${Date.now()}_${i}`,
+                sourceEntityId: entityIdMap.get(l.source),
+                targetEntityId: entityIdMap.get(l.target),
+                direction: 'forward',
+            }));
+
+        const hiddenEntities = ontologyMapNodes
+            .map(n => n.name)
+            .filter(name => !visibleNames.has(name));
+
+        const hiddenRelationships = [];
+        const hiddenInheritances = [];
+        ontologyMapLinks.forEach(link => {
+            const s = _resolveLinkEndpoint(link.source);
+            const t = _resolveLinkEndpoint(link.target);
+            if (!visibleNames.has(s) || !visibleNames.has(t)) {
+                if (link.type === 'inheritance') {
+                    hiddenInheritances.push({ source: s, target: t });
+                } else {
+                    hiddenRelationships.push({ name: link.name, source: s, target: t });
+                }
+            }
+        });
+
+        const layoutData = {
+            entities,
+            relationships,
+            inheritances,
+            visibility: { hiddenEntities, hiddenRelationships, hiddenInheritances },
+        };
+
+        const createResp = await fetch('/domain/design-views/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: viewName }),
+        });
+        if (!createResp.ok) {
+            const err = await createResp.json().catch(() => ({}));
+            throw new Error(err.detail || `Create view failed (${createResp.status})`);
+        }
+
+        const switchResp = await fetch('/domain/design-views/switch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: viewName }),
+        });
+        if (!switchResp.ok) {
+            const err = await switchResp.json().catch(() => ({}));
+            throw new Error(err.detail || `Switch view failed (${switchResp.status})`);
+        }
+
+        const saveResp = await fetch('/domain/design-views/save-current', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(layoutData),
+        });
+        if (!saveResp.ok) {
+            const err = await saveResp.json().catch(() => ({}));
+            throw new Error(err.detail || `Save view failed (${saveResp.status})`);
+        }
+
+        if (typeof SidebarNav !== 'undefined' && SidebarNav.switchTo) {
+            SidebarNav.switchTo('design');
+        } else {
+            const viewsTab = document.querySelector('.sidebar-nav .nav-link[data-section="design"]');
+            if (viewsTab) viewsTab.click();
+        }
+
+        if (typeof loadOntologyIntoDesigner === 'function') {
+            setTimeout(() => loadOntologyIntoDesigner(false), 150);
+        }
+
+        console.log(`[Map] Business view "${viewName}" created with ${entities.length} entities.`);
+    } catch (err) {
+        console.error('[Map] createBusinessViewFromSelection failed:', err);
+        if (typeof showNotification === 'function') {
+            showNotification(`Could not create Business View: ${err.message}`, 'danger');
+        }
+    }
 }
 
 

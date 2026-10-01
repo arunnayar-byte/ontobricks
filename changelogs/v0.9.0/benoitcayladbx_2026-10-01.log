@@ -152,5 +152,42 @@ Modified files:
 
 Tests: uv run --frozen pytest -q -m "not scenario" → 7215 passed, 315 skipped, 6 deselected, 1 xfailed, 32 warnings in 50.65s
 
+## Create selected-only Studio Business Views
+
+Context: Ontology Studio can already multi-select, group-move, and
+multi-delete. Create Business View on a set still did nothing. Users need
+a view that contains exactly the selected entities, only
+object-property/inheritance links with both endpoints selected, named
+Auto_Selection with a numeric suffix, then the existing create/switch/save
+and Business Views navigation. Single-entity 1-hop Auto_<entity> is
+unchanged. This closes the full multi-select feature: Ctrl/Cmd-click,
+marquee, Escape, group move, multi-delete, and selected-only Business View.
+
+Changes:
+
+1. tests/units/front/test_ontology_map_multi_select.py
+   Contract for internal-only links, Auto_Selection naming, circular
+   layout, visibility arrays, persist/navigation, and 1-hop preservation.
+2. src/front/static/ontology/js/ontology-map.js
+   Implement createBusinessViewFromSelection with selected-only layout and
+   the existing design-views create/switch/save-current sequence.
+3. docs/features.md
+   Document Studio multi-select gestures and Auto_Selection vs 1-hop
+   Business View.
+4. docs/user-guide.md
+   Add concrete select/move/delete/Create Business View steps for the
+   Ontology Studio map.
+5. changelogs/v0.9.0/benoitcayladbx_2026-10-01.log
+   Record the selected-only Business View close-out.
+
+Modified files:
+- tests/units/front/test_ontology_map_multi_select.py
+- src/front/static/ontology/js/ontology-map.js
+- docs/features.md
+- docs/user-guide.md
+- changelogs/v0.9.0/benoitcayladbx_2026-10-01.log
+
+Tests: uv run --frozen pytest -q -m "not scenario" → 7217 passed, 315 skipped, 6 deselected, 1 xfailed, 32 warnings in 49.69s
+
 
 
