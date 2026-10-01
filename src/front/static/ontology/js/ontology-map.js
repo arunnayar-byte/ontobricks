@@ -516,20 +516,41 @@ async function initOntologyMap() {
     }
 
     // Drag handlers
+    let mapDragStartPositions = new Map();
+
     function dragStarted(event, d) {
         d.fx = d.x;
         d.fy = d.y;
+        mapDragStartPositions = new Map();
+        if (mapSelectedEntityNames.size > 1 && mapSelectedEntityNames.has(d.name)) {
+            ontologyMapNodes.forEach(node => {
+                if (mapSelectedEntityNames.has(node.name)) {
+                    mapDragStartPositions.set(node.name, { x: node.x, y: node.y });
+                }
+            });
+        }
     }
 
     function dragged(event, d) {
-        d.fx = event.x;
-        d.fy = event.y;
-        // Immediately update positions
+        if (mapDragStartPositions.size > 1) {
+            const origin = mapDragStartPositions.get(d.name);
+            const deltaX = event.x - origin.x;
+            const deltaY = event.y - origin.y;
+            ontologyMapNodes.forEach(node => {
+                const start = mapDragStartPositions.get(node.name);
+                if (!start) return;
+                node.fx = start.x + deltaX;
+                node.fy = start.y + deltaY;
+            });
+        } else {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
         ontologyMapSimulation.alpha(0.01).restart();
     }
 
     function dragEnded(event, d) {
-        // Keep fixed position and save
+        mapDragStartPositions = new Map();
         scheduleMapAutoSave(nodes);
     }
 
@@ -808,8 +829,12 @@ async function initOntologyMap() {
         if (!mapSelectedEntityNames.has(d.name)) {
             _setMapSelection([d.name], { openPanel: false });
         }
-        
-        // Show context menu
+
+        if (mapSelectedEntityNames.size > 1) {
+            showMapMultiSelectContextMenu(event, Array.from(mapSelectedEntityNames), container);
+            return;
+        }
+
         showMapContextMenu(event, d, container);
     });
     
@@ -1493,6 +1518,71 @@ async function createBusinessViewFromEntity(entityData) {
     }
 }
 
+/**
+ * Create a Business View from the current multi-selection.
+ * Selected-set generation (Auto_Selection, internal links only) is Task 3.
+ * @param {string[]} names
+ */
+async function createBusinessViewFromSelection(names) {
+    // Task 3 implements Auto_Selection generation from `names`.
+}
+
+
+function showMapMultiSelectContextMenu(event, names, container) {
+    hideMapContextMenu();
+
+    const menu = document.createElement('div');
+    menu.id = 'mapContextMenu';
+    menu.className = 'map-context-menu';
+    menu.innerHTML = `
+        <div class="map-context-header">
+            <span class="map-context-icon"><i class="bi bi-collection"></i></span>
+            <span class="map-context-title">${names.length} entities</span>
+        </div>
+        <div class="map-context-divider"></div>
+        <div class="map-context-item" data-action="create-business-view">
+            <i class="bi bi-layout-text-window"></i>
+            <span>Create Business View</span>
+        </div>
+        <div class="map-context-divider"></div>
+        <div class="map-context-item map-context-danger" data-action="delete">
+            <i class="bi bi-trash"></i>
+            <span>Delete ${names.length} entities</span>
+        </div>
+    `;
+
+    const containerRect = container.getBoundingClientRect();
+    let x = event.clientX - containerRect.left;
+    let y = event.clientY - containerRect.top;
+
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    container.appendChild(menu);
+
+    const menuRect = menu.getBoundingClientRect();
+    if (menuRect.right > containerRect.right) {
+        menu.style.left = (x - menuRect.width) + 'px';
+    }
+    if (menuRect.bottom > containerRect.bottom) {
+        menu.style.top = (y - menuRect.height) + 'px';
+    }
+
+    menu.querySelector('[data-action="create-business-view"]').addEventListener('click', async () => {
+        hideMapContextMenu();
+        await createBusinessViewFromSelection(names);
+    });
+
+    menu.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+        hideMapContextMenu();
+        await deleteEntitiesFromMap(names);
+    });
+
+    setTimeout(() => {
+        document.addEventListener('click', hideMapContextMenuOnClickOutside);
+        document.addEventListener('contextmenu', hideMapContextMenuOnClickOutside);
+    }, 0);
+}
+
 
 function showMapContextMenu(event, entityData, container) {
     // Remove existing menu
@@ -1841,6 +1931,64 @@ async function deleteEntityFromMap(entityName) {
     } catch (error) {
         console.error('Error deleting entity:', error);
         showNotification('Error deleting entity: ' + error.message, 'error');
+    }
+}
+
+/**
+ * Delete several entities after a single confirmation.
+ * @param {string[]} names
+ */
+async function deleteEntitiesFromMap(names) {
+    if (!names || !names.length) return;
+    if (typeof showConfirmDialog !== 'function') return;
+
+    const confirmed = await showConfirmDialog({
+        title: 'Delete entities',
+        message: `Delete ${names.length} entities? Relationships connected to them will also be removed.`,
+        confirmText: 'Delete',
+        confirmClass: 'btn-danger',
+        icon: 'trash'
+    });
+
+    if (!confirmed) return;
+
+    try {
+        if (typeof OntologyState === 'undefined' || !OntologyState.config) return;
+
+        const namesSet = new Set(names);
+        OntologyState.config.classes = (OntologyState.config.classes || []).filter(
+            c => !namesSet.has(c.name)
+        );
+        OntologyState.config.properties = (OntologyState.config.properties || []).filter(
+            p => !namesSet.has(p.domain) && !namesSet.has(p.range)
+        );
+        OntologyState.config.classes.forEach(c => {
+            if (namesSet.has(c.parent)) {
+                delete c.parent;
+            }
+        });
+
+        if (typeof saveConfigToSession === 'function') {
+            await saveConfigToSession();
+        }
+
+        initOntologyMap();
+
+        if (typeof updateClassesList === 'function') {
+            updateClassesList();
+        }
+        if (typeof updatePropertiesList === 'function') {
+            updatePropertiesList();
+        }
+
+        if (typeof showNotification === 'function') {
+            showNotification(`${names.length} entities deleted`, 'success');
+        }
+    } catch (error) {
+        console.error('Error deleting entities:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('Error deleting entities: ' + error.message, 'error');
+        }
     }
 }
 

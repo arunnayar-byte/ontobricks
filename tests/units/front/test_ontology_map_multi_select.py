@@ -81,3 +81,42 @@ def test_canvas_click_clears_selection_then_closes_panel_once():
     assert "_clearMapSelection({ closePanel: false })" in canvas
     assert canvas.count("guardedCloseSharedPanel()") == 1
     assert "await guardedCloseSharedPanel" not in canvas
+
+
+def _function_block(js, signature):
+    start = js.index(signature)
+    next_positions = []
+    for needle in ("\nfunction ", "\nasync function "):
+        pos = js.find(needle, start + 1)
+        if pos != -1:
+            next_positions.append(pos)
+    end = min(next_positions) if next_positions else len(js)
+    return js[start:end]
+
+
+def test_selected_drag_translates_whole_group():
+    block = _map_init_block()
+    assert "mapDragStartPositions = new Map" in block
+    assert "node.fx = start.x + deltaX" in block
+
+
+def test_multi_context_menu_limits_actions():
+    js = MAP_JS.read_text(encoding="utf-8")
+    block = _function_block(js, "function showMapMultiSelectContextMenu(")
+    assert "Create Business View" in block
+    assert "Delete ${names.length} entities" in block
+    assert "create-relationship" not in block
+    assert "createBusinessViewFromSelection(names)" in block
+    assert "deleteEntitiesFromMap(names)" in block
+
+
+def test_multi_delete_mutates_and_saves_once():
+    js = MAP_JS.read_text(encoding="utf-8")
+    block = _function_block(js, "async function deleteEntitiesFromMap(")
+    assert "const namesSet = new Set(names)" in block
+    assert "await saveConfigToSession()" in block
+    assert block.count("initOntologyMap()") == 1
+    assert "title: 'Delete entities'" in block
+    assert "typeof showConfirmDialog !== 'function'" in block
+    assert block.count("showConfirmDialog(") == 1
+    assert "async function createBusinessViewFromSelection(names)" in js

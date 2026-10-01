@@ -130,5 +130,27 @@ Modified files:
 
 Tests: uv run --frozen pytest -q -m "not scenario" → 7212 passed, 315 skipped, 6 deselected, 1 xfailed, 32 warnings in 50.16s
 
+## Add Ontology Studio group move and multi-delete
+
+Context: Task 1 left a selection set without group actions. Users need to
+drag every selected node together, open a limited multi-select context
+menu, and delete the set with one confirm, one save, and one map refresh.
+
+Changes:
+
+1. src/front/static/ontology/js/ontology-map.js
+   Translate selected nodes by the dragged-node delta; add a multi-select
+   menu (Create Business View + Delete N entities); delete once; stub
+   createBusinessViewFromSelection for Task 3.
+2. tests/units/front/test_ontology_map_multi_select.py
+   Source contracts for group drag, menu actions, and single-save delete.
+
+Modified files:
+- src/front/static/ontology/js/ontology-map.js
+- tests/units/front/test_ontology_map_multi_select.py
+- changelogs/v0.9.0/benoitcayladbx_2026-10-01.log
+
+Tests: uv run --frozen pytest -q -m "not scenario" → 7215 passed, 315 skipped, 6 deselected, 1 xfailed, 32 warnings in 50.65s
+
 
 
