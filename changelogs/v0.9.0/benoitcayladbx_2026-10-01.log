@@ -214,3 +214,35 @@ Tests: uv run --frozen pytest -q -m "not scenario" → 7225 passed, 315 skipped,
 
 
 
+## Harden Ontology Studio multi-select interactions
+
+Context: Final browser and code review found that the click emitted after a
+marquee could clear its result, context menus could retain stale selections,
+map rebuilds could race dirty-panel saves, and macOS Control gestures needed
+native context-menu handling. The Studio multi-select flow now preserves live
+selection state across those interactions and has Playwright coverage.
+
+Changes:
+
+1. src/front/static/ontology/js/ontology-map.js
+   Preserve marquee results, close stale menus, avoid panel-close races,
+   share Business View persistence, handle cancellation paths, and report
+   the actual multi-delete count.
+2. tests/units/front/test_ontology_map_multi_select.py
+   Extend contracts for click suppression, live action selection, safe map
+   rebuilds, modal Escape, and shared Business View construction.
+3. tests/e2e/ontology/test_studio_multi_select_flows.py
+   Exercise Ctrl/Cmd marquee, empty marquee, menu freshness, canvas clearing,
+   and Escape behavior in a real Chromium session.
+4. docs/architecture.md
+   Document Studio multi-select state, gestures, group actions, and macOS
+   Control-click handling.
+
+Modified files:
+- src/front/static/ontology/js/ontology-map.js
+- tests/units/front/test_ontology_map_multi_select.py
+- tests/e2e/ontology/test_studio_multi_select_flows.py
+- docs/architecture.md
+- changelogs/v0.9.0/benoitcayladbx_2026-10-01.log
+
+Tests: uv run --frozen pytest -q -m "not scenario" → 7237 passed, 325 skipped, 6 deselected, 1 xfailed
