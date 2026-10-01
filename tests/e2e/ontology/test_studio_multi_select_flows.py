@@ -211,3 +211,46 @@ def test_multi_menu_closes_on_escape_and_clears_selection(studio):
 
     assert studio.locator("#mapContextMenu").count() == 0
     assert _selected(studio) == []
+
+
+def test_escape_in_delete_confirmation_keeps_selection(studio):
+    """Escape belongs to the Bootstrap modal, not to the Studio selection.
+
+    Bootstrap drops ``.show`` before the document keydown listener runs, so a
+    ``.modal.show`` probe alone is not enough.
+    """
+    _marquee_around_all(studio, "Control")
+    _open_multi_menu(studio)
+    studio.locator("#mapContextMenu [data-action='delete']").click()
+    studio.wait_for_selector(".modal.show", state="visible")
+    # Bootstrap only handles Escape once the fade-in finished and it moved
+    # focus into the dialog (``shown.bs.modal``).
+    studio.wait_for_function(
+        "() => document.activeElement && document.activeElement.closest('.modal')"
+    )
+
+    studio.keyboard.press("Escape")
+    # Bootstrap dismisses the dialog (and drops ``.show``) on this Escape.
+    studio.wait_for_selector(".modal.show", state="detached")
+    studio.wait_for_timeout(400)
+
+    assert _selected(studio) == _ALL
+    assert len(studio.evaluate("OntologyState.config.classes")) == 3
+
+
+def test_escape_in_studio_without_modal_still_clears_selection(studio):
+    _marquee_around_all(studio, "Control")
+    assert _selected(studio) == _ALL
+    studio.keyboard.press("Escape")
+    studio.wait_for_timeout(150)
+    assert _selected(studio) == []
+
+
+def test_escape_outside_studio_keeps_selection(studio):
+    _marquee_around_all(studio, "Control")
+    assert _selected(studio) == _ALL
+    studio.evaluate("SidebarNav.switchTo('entities')")
+    studio.wait_for_timeout(300)
+    studio.keyboard.press("Escape")
+    studio.wait_for_timeout(150)
+    assert _selected(studio) == _ALL

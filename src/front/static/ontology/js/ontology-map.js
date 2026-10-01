@@ -91,7 +91,12 @@ function _clearMapSelection(options) {
 function handleMapSelectionKeyDown(event) {
     if (event.key !== 'Escape') return;
     // Escape belongs to an open Bootstrap modal, or to another Ontology
-    // section, not to the Studio canvas.
+    // section, not to the Studio canvas. Bootstrap's own (element-level)
+    // keydown handler runs first and already drops `.show` while dismissing,
+    // so also look at where the key came from and at `body.modal-open`
+    // (which stays set until the hide transition ends).
+    if (event.target && event.target.closest && event.target.closest('.modal')) return;
+    if (document.body.classList.contains('modal-open')) return;
     if (document.querySelector('.modal.show')) return;
     if (!document.querySelector('#map-section.active')) return;
     hideMapContextMenu();
@@ -1419,8 +1424,9 @@ function focusMapEntity(name) {
  * @param {string[]} spec.entityNames  Entities in layout order.
  * @param {Array<{name: string, source: string, target: string}>} spec.relLinks
  * @param {Array<{source: string, target: string}>} spec.inhLinks
- * @param {function(number): {x: number, y: number}} spec.positionFor
- *        Placement for the entity at a given index, given (cx, cy, radius).
+ * @param {function(number, number, number, number): {x: number, y: number}} spec.positionFor
+ *        Placement for an entity, called as (index, cx, cy, radius): the
+ *        entity's index in `entityNames`, the circle centre, and its radius.
  * @param {string}   spec.logLabel     Caller name for diagnostics.
  */
 async function _createMapBusinessView(spec) {

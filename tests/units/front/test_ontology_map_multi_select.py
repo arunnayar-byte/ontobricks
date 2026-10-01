@@ -295,3 +295,21 @@ def test_new_pointerdown_resets_leftover_click_suppression():
     handler = block[start:block.index("svg.on('contextmenu'", start)]
     assert "_mapCanvasClickSuppressUntil = 0" in handler
     assert handler.index("_mapCanvasClickSuppressUntil = 0") < handler.index("startMapMarquee(event)")
+
+
+def test_escape_ignores_events_from_modal_even_after_show_class_removed():
+    js = MAP_JS.read_text(encoding="utf-8")
+    block = _function_block(js, "function handleMapSelectionKeyDown(")
+    assert "event.target.closest('.modal')" in block
+    assert "document.body.classList.contains('modal-open')" in block
+    assert block.index("event.target.closest('.modal')") < block.index("_clearMapSelection()")
+    assert block.index("modal-open") < block.index("_clearMapSelection()")
+
+
+def test_business_view_position_callback_documents_all_arguments():
+    js = MAP_JS.read_text(encoding="utf-8")
+    assert (
+        "@param {function(number, number, number, number): {x: number, y: number}} spec.positionFor"
+        in js
+    )
+    assert "(index, cx, cy, radius)" in js
