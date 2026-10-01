@@ -121,6 +121,13 @@
     filter: drop-shadow(0 0 12px rgba(var(--db-primary-rgb), 0.9));
 }
 
+.map-selection-marquee {
+    fill: var(--db-primary-light);
+    stroke: var(--db-primary);
+    stroke-width: 1px;
+    pointer-events: none;
+}
+
 /* Relationship links */
 .map-link {
     fill: none;

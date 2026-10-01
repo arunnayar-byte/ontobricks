@@ -17,6 +17,54 @@ let ontologyMapLinks  = [];   // live reference to link data (set by initOntolog
 let ontologyMapNodes  = [];   // live reference to node data (set by initOntologyMap)
 let _mapHighlightNeighborhood = null;  // set by initOntologyMap, used by focusMapEntity
 let _mapClearHighlights       = null;  // set by initOntologyMap, used by focusMapEntity
+let mapSelectedEntityNames    = new Set();
+
+/**
+ * Apply a new entity selection set and sync node classes, neighbourhood
+ * dimming, and the single-entity panel.
+ * @param {Iterable<string>} names
+ * @param {{openPanel?: boolean}} [options]
+ */
+function _setMapSelection(names, options) {
+    const openPanel = !(options && options.openPanel === false);
+    const previousSize = mapSelectedEntityNames.size;
+    mapSelectedEntityNames = new Set(names || []);
+    d3.selectAll('.map-node').classed('selected', d => d && mapSelectedEntityNames.has(d.name));
+
+    if (mapSelectedEntityNames.size === 1) {
+        const name = mapSelectedEntityNames.values().next().value;
+        if (_mapHighlightNeighborhood) _mapHighlightNeighborhood(name);
+        if (openPanel && typeof editClassByName === 'function') {
+            editClassByName(name);
+        }
+        return;
+    }
+
+    if (_mapClearHighlights) _mapClearHighlights();
+    if (previousSize !== 0 && typeof guardedCloseSharedPanel === 'function') {
+        guardedCloseSharedPanel();
+    }
+}
+
+function _toggleMapEntitySelection(name) {
+    const next = new Set(mapSelectedEntityNames);
+    if (next.has(name)) next.delete(name);
+    else next.add(name);
+    _setMapSelection(next, { openPanel: false });
+}
+
+function _clearMapSelection() {
+    _setMapSelection([], { openPanel: false });
+}
+
+function handleMapSelectionKeyDown(event) {
+    if (event.key !== 'Escape') return;
+    if (mapConnectionMode) return;
+    if (mapSelectedEntityNames.size <= 1) return;
+    _clearMapSelection();
+}
+
+document.addEventListener('keydown', handleMapSelectionKeyDown);
 
 /**
  * Resolve the name from a D3 link endpoint that may be either a plain string
@@ -170,6 +218,7 @@ function initMapGridToggle() {
 async function initOntologyMap() {
     // Increment generation counter to cancel any previous in-flight init
     const thisGeneration = ++_mapInitGeneration;
+    _clearMapSelection();
 
     initMapGridToggle();
     showOntologyMapLoading(true);
@@ -378,6 +427,13 @@ async function initOntologyMap() {
         .on('zoom', (event) => {
             g.attr('transform', event.transform);
         });
+
+    ontologyMapZoom.filter((event) => {
+        if (event.type === 'wheel') return true;
+        if (event.button) return false;
+        if (event.ctrlKey || event.metaKey) return false;
+        return true;
+    });
 
     svg.call(ontologyMapZoom);
 
@@ -732,16 +788,13 @@ async function initOntologyMap() {
             .attr('fill', '#e9ecef')
             .attr('stroke', '#999')
             .attr('stroke-width', 1.5);
-        
-        // Highlight selected node + neighborhood
-        d3.selectAll('.map-node').classed('selected', false);
-        d3.select(this).classed('selected', true);
-        highlightNeighborhood(d.name);
-        
-        // Open entity edit panel (using shared panel)
-        if (typeof editClassByName === 'function') {
-            editClassByName(d.name);
+
+        if (event.ctrlKey || event.metaKey) {
+            _toggleMapEntitySelection(d.name);
+            return;
         }
+
+        _setMapSelection([d.name]);
     });
     
     // Right-click context menu for entities (suppressed in view mode)
@@ -750,11 +803,10 @@ async function initOntologyMap() {
         event.stopPropagation();
 
         if (window.isActiveVersion === false) return;
-        
-        // Highlight selected node + neighborhood
-        d3.selectAll('.map-node').classed('selected', false);
-        d3.select(this).classed('selected', true);
-        highlightNeighborhood(d.name);
+
+        if (!mapSelectedEntityNames.has(d.name)) {
+            _setMapSelection([d.name], { openPanel: false });
+        }
         
         // Show context menu
         showMapContextMenu(event, d, container);
@@ -765,18 +817,86 @@ async function initOntologyMap() {
     svg.on('click', function() {
         hideMapContextMenu();
         hideMapRelationshipActions();
-        d3.selectAll('.map-node').classed('selected', false);
         d3.selectAll('.map-link-hitarea')
             .attr('fill', '#e9ecef')
             .attr('stroke', '#999')
             .attr('stroke-width', 1.5);
-        clearHighlights();
+        _clearMapSelection();
 
         // Guarded: this is now the only way out of the panel, so a pending
         // edit must be flushed rather than dropped.
         if (typeof guardedCloseSharedPanel === 'function') {
             guardedCloseSharedPanel();
         }
+    });
+
+    function startMapMarquee(event) {
+        if (mapConnectionMode) return;
+        if (!(event.ctrlKey || event.metaKey)) return;
+        if (event.button !== 0) return;
+        if (event.target.closest && event.target.closest('.map-node')) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const svgNode = svg.node();
+        const pointerToGraph = (evt) => d3.zoomTransform(svgNode).invert(d3.pointer(evt, svgNode));
+        const [startX, startY] = pointerToGraph(event);
+        const marquee = g.append('rect')
+            .attr('class', 'map-selection-marquee')
+            .attr('x', startX)
+            .attr('y', startY)
+            .attr('width', 0)
+            .attr('height', 0);
+
+        function cleanup() {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            svgNode.removeEventListener('pointerleave', onCancel);
+            marquee.remove();
+        }
+
+        function onCancel() {
+            cleanup();
+        }
+
+        function onMove(evt) {
+            if (!(evt.ctrlKey || evt.metaKey)) {
+                onCancel();
+                return;
+            }
+            const [curX, curY] = pointerToGraph(evt);
+            const x = Math.min(startX, curX);
+            const y = Math.min(startY, curY);
+            marquee
+                .attr('x', x)
+                .attr('y', y)
+                .attr('width', Math.abs(curX - startX))
+                .attr('height', Math.abs(curY - startY));
+        }
+
+        function onUp(evt) {
+            const [endX, endY] = pointerToGraph(evt);
+            const minX = Math.min(startX, endX);
+            const maxX = Math.max(startX, endX);
+            const minY = Math.min(startY, endY);
+            const maxY = Math.max(startY, endY);
+            cleanup();
+            const namesInside = ontologyMapNodes
+                .filter(n => n.x >= minX && n.x <= maxX && n.y >= minY && n.y <= maxY)
+                .map(n => n.name);
+            if (namesInside.length) {
+                _setMapSelection(namesInside);
+            }
+        }
+
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        svgNode.addEventListener('pointerleave', onCancel);
+    }
+
+    svg.on('pointerdown', function(event) {
+        startMapMarquee(event);
     });
     
     svg.on('contextmenu', function(event) {
