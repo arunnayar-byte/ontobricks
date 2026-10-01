@@ -2,7 +2,7 @@
   <img src="src/front/static/global/img/ontobricks-icon.svg" alt="OntoBricks Logo" width="120" height="120">
 </p>
 
-<h1 align="center">OntoBricks 0.8.0</h1>
+<h1 align="center">OntoBricks 0.8.1</h1>
 
 <p align="center">
   <strong>Turn your Databricks tables into a living knowledge graph — in four clicks.</strong>
@@ -171,7 +171,8 @@ by the Databricks CLI.
 - **[Value proposition](docs/product.md)** — the business case &amp; go-to-market
 - **[User Guide](docs/user-guide.md)** · **[Features](docs/features.md)** · **[Architecture](docs/architecture.md)** · **[API](docs/api.md)**
 - **[MCP](docs/mcp.md)** · **[Graph DB](docs/lakebase-graphdb.md)** · **[Import / Export](docs/import-export.md)**
-- **[Developing OntoBricks](docs/development.md)** — build, test, contribute
+- **[Contributor Guide](docs/contributing.md)** — setup, style, tests, PRs
+- **[Developing OntoBricks](docs/development.md)** — dependencies, test campaign, permissions
 
 Product overview, screenshots and videos:
 [ontobricks.org](https://ontobricks.org/).

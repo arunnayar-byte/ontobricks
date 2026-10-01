@@ -2,6 +2,8 @@
 
 Notes for contributors: dependencies, testing, and permission / SDK notes.
 
+**Workflow** (setup, PRs, changelog, AI eval gate): [contributing.md](contributing.md). This file is the deep dive on packages, the test campaign, and permissions.
+
 ## OntoBricks Dependencies
 
 This document describes all external dependencies used by OntoBricks, including Python packages, UI frameworks, and JavaScript libraries.
@@ -35,7 +37,7 @@ This document describes all external dependencies used by OntoBricks, including 
 | **pyshacl** | ≥0.26.0 | W3C SHACL validator for RDFLib graphs — validates RDF data against SHACL shapes for data quality checks | Apache-2.0 | [github.com/RDFLib/pySHACL](https://github.com/RDFLib/pySHACL) |
 | **NetworkX** | ≥3.0 | Graph analysis library — server-side community detection (Louvain, Label Propagation, Greedy Modularity) on the full graph viewer | BSD-3-Clause | [networkx.org](https://networkx.org/) |
 | **strawberry-graphql[fastapi]** | ≥0.315.7 | GraphQL library for Python — auto-generates typed schema from ontology and integrates with FastAPI | MIT | [strawberry.rocks](https://strawberry.rocks/) |
-| **MLflow** | ≥3.15.0 | ML lifecycle platform — used for agent tracing, evaluation, and the Databricks Agent Framework (ResponsesAgent) | Apache-2.0 | [mlflow.org](https://mlflow.org/) |
+| **MLflow** | ≥3.16.1 | ML lifecycle platform — used for agent tracing, evaluation, and the Databricks Agent Framework (ResponsesAgent) | Apache-2.0 | [mlflow.org](https://mlflow.org/) |
 
 ##### MCP Server Additional Dependencies
 
@@ -307,9 +309,12 @@ and source downloads used by `uv run --frozen` in Databricks Apps. Never commit
 commands, always pass `--frozen` so uv cannot rewrite the lock.
 
 Current explicit security floors include
-`databricks-sql-connector>=4.4.0`, `nltk>=3.10.3`, `pip>=26.2.0`,
-`transformers>=5.10.0`, and `cryptography>=50.0.0` in the standalone MCP
-dependency graph. `pyproject.toml` remains authoritative.
+`databricks-sql-connector>=4.4.0`, `mlflow>=3.16.1`, `nltk>=3.10.3`,
+`sentence-transformers>=5.6.0`, `pip>=26.2.0`, `transformers>=5.10.0`,
+`gitpython>=3.1.62`, `pyjwt>=2.15.0`, `urllib3>=2.8.0`, `anyio>=4.14.2`,
+and `cryptography>=50.0.0`. `oauthlib>=4` is blocked by
+`databricks-sql-connector` (`oauthlib<4`). `pyproject.toml` remains
+authoritative.
 
 #### Frontend Dependencies
 
@@ -817,9 +822,9 @@ A user's effective role is determined by combining all three layers.
 
 | Role | Source | Capabilities |
 |------|--------|--------------|
-| **Admin** | Databricks App `CAN_MANAGE` permission | Full access. Can view, edit, build, and manage the Settings page including the permission list. |
+| **Admin** | Databricks App `CAN_MANAGE` permission | Full access. Can create domains in the registry, view, edit, build, and manage the Settings page including the permission list. |
 | **Builder** | In-app permission list | Can view, edit, **import and manage data sources**, and **build graph viewers**. Cannot change shared Settings (SQL Warehouse, Teams, branding). |
-| **Editor** | In-app permission list | Can view all pages, create and modify domains, ontologies, mappings, and **data sources**. **Cannot build graph viewers.** Cannot change shared Settings. |
+| **Editor** | In-app permission list | Can view all pages and modify assigned domains, ontologies, mappings, and **data sources**. Cannot create a domain (Admin only). **Cannot build graph viewers.** Cannot change shared Settings. |
 | **Viewer** | In-app permission list | Read-only access. Can browse domains, ontologies, and query results. All write operations (POST, PUT, PATCH, DELETE) are blocked. Cannot access Settings. |
 | **None** | Default when not matched | Completely blocked. Redirected to the Access Denied page. |
 

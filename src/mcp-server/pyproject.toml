@@ -25,6 +25,13 @@ constraint-dependencies = [
     "cryptography>=50.0.0",
     "mcp>=1.28.1",
     "pyasn1>=0.6.4",
+    # pyjwt>=2.15.0: HMAC/JWK confusion series + RecursionError + options-dict
+    # mutation (GHSA-gvp8-978c-rx2q). Transitive via databricks-sdk.
+    "pyjwt>=2.15.0",
+    # urllib3 2.8.0: proxy TLS override, unbounded chunk-size line, Deflate loop.
+    "urllib3>=2.8.0",
+    # anyio 4.14.2: TLSStream IDNA 2003 spoofing + process-pool stderr stall.
+    "anyio>=4.14.2",
 ]
 
 [project.scripts]
@@ -39,7 +46,7 @@ packages = ["server"]
 
 [dependency-groups]
 dev = [
-    "anyio>=4.13.0",
+    "anyio>=4.14.2",
     "pytest>=9.1.0",
     "pytest-asyncio>=1.4.0",
 ]
