@@ -25,6 +25,14 @@ OntologyEditor class
    :undoc-members:
    :show-inheritance:
 
+OntologyEntityImport class
+--------------------------
+
+.. automodule:: back.objects.ontology.OntologyEntityImport
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 OntologyImport class
 --------------------
 

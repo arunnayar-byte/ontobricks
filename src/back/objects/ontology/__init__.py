@@ -11,6 +11,7 @@ from back.objects.ontology.OntologyClassModel import OntologyClassModel
 from back.objects.ontology.OntologyEditor import OntologyEditor
 from back.objects.ontology.OntologyGroups import OntologyGroups
 from back.objects.ontology.OntologyImport import OntologyImport
+from back.objects.ontology.OntologyEntityImport import OntologyEntityImport
 from back.objects.ontology.OntologyOwl import OntologyOwl
 from back.objects.ontology.OntologyRules import OntologyRules
 from back.objects.ontology.GenerateDraft import (
@@ -28,6 +29,7 @@ __all__ = [
     "OntologyEditor",
     "OntologyGroups",
     "OntologyImport",
+    "OntologyEntityImport",
     "OntologyJsonViews",
     "OntologyOwl",
     "OntologyRules",

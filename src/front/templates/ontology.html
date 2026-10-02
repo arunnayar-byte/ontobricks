@@ -113,6 +113,8 @@
     </div>
 </div>
 
+{% include "partials/ontology/_ontology_entity_import_modal.html" %}
+
 <!-- OntoViz library for Design section -->
 <script src="{{ url_for('static', filename='global/ontoviz/ontoviz.js') }}?v={{ asset_version }}"></script>
 
@@ -121,6 +123,7 @@
 
 <!-- Ontology modules (extracted from partials) -->
 <script src="{{ url_for('static', filename='ontology/js/ontology-map.js') }}?v={{ asset_version }}"></script>
+<script src="{{ url_for('static', filename='ontology/js/ontology-entity-import.js') }}?v={{ asset_version }}"></script>
 <script src="{{ url_for('static', filename='ontology/js/ontology-shared-panels.js') }}?v={{ asset_version }}"></script>
 <script src="{{ url_for('static', filename='ontology/js/ontology-entities.js') }}?v={{ asset_version }}"></script>
 <script src="{{ url_for('static', filename='ontology/js/ontology-relationships.js') }}?v={{ asset_version }}"></script>

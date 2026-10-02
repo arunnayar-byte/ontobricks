@@ -544,3 +544,9 @@
         overflow: visible;
     }
 }
+
+/* Studio "Import entity" modal: both columns scroll independently. */
+#entityImportModal .entity-import-list {
+    max-height: 22rem;
+    overflow-y: auto;
+}

@@ -205,6 +205,14 @@ If `Employé` inherits from `Personne` and `Personne` has `habiteÀ → Ville`, 
 3. The view contains **only** the selected entities. Object-property and inheritance links are included only when **both** endpoints are selected. Neighbours are not pulled in.
 4. The app then switches to **Business Views** with that layout. Right-click a **single** entity still creates `Auto_<entityName>` plus that entity's 1-hop neighbourhood.
 
+**Import entities from another domain**
+
+1. Click **Import entity** in the Studio header (hidden for viewers and read-only versions).
+2. Pick a **Source domain**. OntoBricks reads its latest version.
+3. Tick the entities to copy. The right column lists, for each ticked entity, its related entities (relationships, parent, children); tick any of them to import them too. The footer shows how many entities and relationships will be imported.
+4. Entities whose name already exists in the current domain are flagged **Exists**. **Keep existing** (default) skips the copy and uses the existing entity as the endpoint of imported relationships; **Rename** imports the copy under a new name.
+5. Click **Import**. Imported entities get your domain's base URI, keep their attributes, icon, description and parent (when the parent is imported or already exists), and record their origin (`importedFrom`). A relationship is created when both endpoints are imported or already exist. Mappings, rules, constraints and groups are not imported.
+
 ### Option B: Form-Based Interface
 
 #### Configure Basic Information

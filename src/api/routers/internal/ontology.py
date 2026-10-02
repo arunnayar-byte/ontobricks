@@ -1765,6 +1765,69 @@ async def list_bridge_domain_classes(
 
 
 # ===========================================
+# Entity import (Studio "Import entity")
+# ===========================================
+
+
+async def _load_source_ontology(domain, settings, domain_name: str):
+    """Latest-version ontology of *domain_name*; refuses the current domain."""
+    from back.objects.registry import RegistryService
+    from back.core.helpers import run_blocking
+
+    current = {
+        (domain.info.get("name") or "").strip().lower(),
+        (domain.domain_folder or "").strip().lower(),
+    }
+    if domain_name.strip().lower() in current:
+        raise ValidationError("Cannot import entities from the current domain")
+    svc = RegistryService.from_context(domain, settings)
+    ok, data, version, msg = await run_blocking(svc.load_latest_domain_data, domain_name)
+    if not ok:
+        raise InfrastructureError("Loading source domain ontology failed", detail=msg)
+    return svc._extract_latest_ontology(data), version
+
+
+@router.get("/entity-import/domains/{domain_name}/catalog")
+async def entity_import_catalog(
+    domain_name: str,
+    session_mgr: SessionManager = Depends(get_session_manager),
+    settings: Settings = Depends(get_settings),
+):
+    """Entities and relationships of another domain, flagged against the current one."""
+    with map_route_errors("Loading entity import catalog failed", logger):
+        from back.objects.ontology import OntologyEntityImport
+
+        domain = get_domain(session_mgr)
+        source, version = await _load_source_ontology(domain, settings, domain_name)
+        catalog = OntologyEntityImport.build_catalog(source, domain.ontology)
+        return {"success": True, "domain": domain_name, "version": version, **catalog}
+
+
+@router.post("/entity-import")
+async def entity_import(
+    request: Request,
+    session_mgr: SessionManager = Depends(get_session_manager),
+    settings: Settings = Depends(get_settings),
+):
+    """Copy selected entities (and their relationships) from another domain."""
+    with map_route_errors("Entity import failed", logger):
+        data = await request.json()
+        domain_name = (data.get("domain") or "").strip()
+        names = [n for n in data.get("entities") or [] if isinstance(n, str) and n]
+        if not domain_name or not names:
+            raise ValidationError("A source domain and at least one entity are required")
+        domain = get_domain(session_mgr)
+        source, version = await _load_source_ontology(domain, settings, domain_name)
+        return Ontology(domain).import_entities_from_domain(
+            source,
+            names,
+            data.get("renames") or {},
+            source_domain=domain_name,
+            source_version=version,
+        )
+
+
+# ===========================================
 # OWL File Operations (Unity Catalog)
 # ===========================================
 

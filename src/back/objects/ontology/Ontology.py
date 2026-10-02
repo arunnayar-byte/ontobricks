@@ -15,6 +15,7 @@ from back.core.w3c.shacl.constants import QUALITY_CATEGORIES
 from shared.config.constants import DEFAULT_BASE_URI
 from back.objects.ontology.OntologyClassModel import OntologyClassModel
 from back.objects.ontology.OntologyEditor import OntologyEditor
+from back.objects.ontology.OntologyEntityImport import OntologyEntityImport
 from back.objects.ontology.OntologyGroups import OntologyGroups
 from back.objects.ontology.OntologyImport import IndustryKind, OntologyImport
 from back.objects.ontology.OntologyOwl import OntologyOwl
@@ -476,6 +477,17 @@ class Ontology:
         version: Optional[str] = None,
     ) -> Dict[str, Any]:
         return OntologyImport(self._domain).import_industry_ontology(kind, domain_keys, version)
+
+    def import_entities_from_domain(
+        self,
+        source: Dict[str, Any],
+        names: List[str],
+        renames: Dict[str, str],
+        *,
+        source_domain: str,
+        source_version: str,
+    ) -> Dict[str, Any]:
+        return OntologyEntityImport(self._domain).import_entities(source, names, renames, source_domain=source_domain, source_version=source_version)
 
     def apply_parsed_owl_to_domain(
         self,

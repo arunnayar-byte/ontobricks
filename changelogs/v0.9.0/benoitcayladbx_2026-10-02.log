@@ -48,3 +48,65 @@ Modified files:
 - changelogs/v0.9.0/benoitcayladbx_2026-10-02.log
 
 Tests: uv run --frozen pytest -q -m "not scenario" → 7256 passed, 326 skipped, 6 deselected, 1 xfailed, 32 warnings in 55.34s
+
+## Add Studio "Import entity" from another domain
+
+Context: Users had to re-type entities already modelled in another registry
+domain. Ontology Studio now has an **Import entity** button that opens a modal:
+pick a source domain (latest version), tick entities, optionally tick their
+1-hop related entities, and import them with attributes, icon, description,
+resolvable parent and the relationships whose endpoints are imported or already
+exist. URIs are rebased on the current domain and each copy records
+`importedFrom`. Name conflicts default to keeping the existing entity (used as
+relationship endpoint) with an optional rename. Mappings, rules, constraints and
+groups are not imported. Backend logic is a Fowler Extract Class next to
+`OntologyImport`; the server reloads the source ontology on import.
+
+Changes:
+
+1. src/back/objects/ontology/OntologyEntityImport.py
+   New class: catalog building and authoritative import rules (URI rebase, conflict skip/rename, relationship resolution, provenance, top-level datatype properties folded into attributes).
+2. src/back/objects/ontology/Ontology.py
+   One-line delegator `import_entities_from_domain`.
+3. src/back/objects/ontology/__init__.py
+   Export `OntologyEntityImport`.
+4. src/api/routers/internal/ontology.py
+   `_load_source_ontology` helper plus `GET /ontology/entity-import/domains/{domain}/catalog` and `POST /ontology/entity-import`.
+5. src/front/templates/partials/ontology/_ontology_entity_import_modal.html
+   New Bootstrap modal (domain picker, entity list, related entities, live summary).
+6. src/front/templates/partials/ontology/_ontology_map.html
+   `#mapImportEntity` header button (`.ontology-edit-btn`, hidden for viewers/read-only).
+7. src/front/templates/ontology.html
+   Include the modal partial and load `ontology-entity-import.js` after the map script.
+8. src/front/static/ontology/js/ontology-entity-import.js
+   Preview helpers (`relatedEntities`, `previewImport`, `isValidName`) and modal wiring; refreshes the Studio after import.
+9. src/front/static/ontology/css/ontology-map.css
+   Independent scrolling for the two modal columns.
+10. tests/units/ontology/test_entity_import.py
+    Backend rules: catalog, copy, URI rebase, attributes, parent, relationships, conflicts, renames.
+11. tests/units/api/test_entity_import_routes.py
+    Route wiring, server-side source reload, input validation, current-domain refusal.
+12. tests/units/front/test_entity_import_ui.py
+    Node-executed helper behaviour and source contracts for button, modal, script and routes.
+13. docs/user-guide.md / docs/features.md / docs/sphinx/api/app.objects.ontology.rst
+    Document the feature and the new API class.
+
+Modified files:
+- src/back/objects/ontology/OntologyEntityImport.py
+- src/back/objects/ontology/Ontology.py
+- src/back/objects/ontology/__init__.py
+- src/api/routers/internal/ontology.py
+- src/front/templates/partials/ontology/_ontology_entity_import_modal.html
+- src/front/templates/partials/ontology/_ontology_map.html
+- src/front/templates/ontology.html
+- src/front/static/ontology/js/ontology-entity-import.js
+- src/front/static/ontology/css/ontology-map.css
+- tests/units/ontology/test_entity_import.py
+- tests/units/api/test_entity_import_routes.py
+- tests/units/front/test_entity_import_ui.py
+- docs/user-guide.md
+- docs/features.md
+- docs/sphinx/api/app.objects.ontology.rst
+- changelogs/v0.9.0/benoitcayladbx_2026-10-02.log
+
+Tests: uv run --frozen pytest -q -m "not scenario" → 7288 passed, 326 skipped, 6 deselected, 1 xfailed, 32 warnings in 53.30s
