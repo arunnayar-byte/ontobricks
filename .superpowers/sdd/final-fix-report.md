@@ -1,170 +1,122 @@
-# Final-fix report — Domain version review blockers (2026-09-25)
+# Final-fix report — Ontology Studio multi-select (final review)
 
-## Verified findings and resolutions
+Commit: `e2fd6980c5287bd20403da3ae3da1c1776d29e58`
+Scope: findings from `.superpowers/sdd/review-7b620707..cf86202c.diff`, spec
+`docs/superpowers/specs/2026-10-01-ontology-studio-multi-select-design.md`.
 
-1. **Persisted deletion identity — confirmed.** The Domain endpoint used
-   `uc_domain_folder`, whose name fallback could select an existing registry
-   domain from an unsaved same-name session. It now accepts only the persisted
-   `domain_folder`; missing identity is rejected before the deletion service.
-   The API regression proves the fallback cannot trigger a delete.
-2. **Deletion concurrency — confirmed.** Policy validation read status before
-   a later unconditional delete. Lakebase now executes one PostgreSQL
-   `DELETE ... USING` statement with `v.status = 'DRAFT'`. `rowcount == 0`
-   raises the established `ConflictError` (HTTP 409). The Registry service
-   therefore never starts Knowledge Store or legacy Volume cleanup after a
-   state-change conflict. This uses the existing psycopg connection context;
-   no unsupported transaction API was introduced.
-3. **Global lifecycle state — confirmed.** Inline card transitions refreshed
-   only the card list. Successful transitions now refresh the authoritative
-   navbar state, and transitions of the loaded version invalidate and re-fetch
-   version status to synchronize badges, globals, role tooltip, and the
-   `read-only-version` body class without a reload.
-4. **Confirmation copy — confirmed.** Domain-card version deletion names the
-   escaped domain and version and explicitly warns about permanent Knowledge
-   Store removal. Registry version and whole-domain confirmations provide the
-   same warning and escape raw-HTML-bound values.
-5. **Cancellation focus — confirmed.** Transition, Load, and Delete share one
-   connected/enabled trigger-focus restore helper. Real Bootstrap-modal
-   browser tests cover Transition and Load cancellation.
+> Note: this path previously held a tracked report from an older task
+> ("Domain version review blockers"). It was overwritten in the working tree
+> only (not committed); the old content is still in `git show HEAD:.superpowers/sdd/final-fix-report.md`.
 
-## Related minors
+## Files in the fix commit
 
-- Cards now use `aria-labelledby` pointing to their visible version heading.
-- Removed the unused `?refresh=true` parameter from card-list requests while
-  retaining awaited post-action refreshes.
-- README and user documentation now describe guarded deletion and immediate
-  lifecycle synchronization.
-- Message-substring capability normalization remains deferred. Converting it
-  would touch shared lifecycle presentation outside these blockers; the new
-  zero-row deletion conflict uses the existing structured `ConflictError`
-  path instead.
+- `src/front/static/ontology/js/ontology-map.js`
+- `tests/units/front/test_ontology_map_multi_select.py`
+- `tests/e2e/ontology/test_studio_multi_select_flows.py` (new)
+- `docs/architecture.md` (was clean; new "Ontology Studio multi-select" section)
 
-## RED/GREEN evidence
+## Fixes
 
-- RED: focused regressions initially produced 11 expected failures (persisted
-  identity, guarded SQL/zero-row conflict, accessible names, confirmation
-  copy, focus restoration, and global state refresh).
-- GREEN: the same focused set completed with 34 passed.
-- Mocked Chromium: 7 passed, including real-modal Transition/Load focus and
-  loaded Draft → In Review global read-only synchronization.
+| # | Finding | Fix |
+|---|---------|-----|
+| 1 | Browser `click` after Cmd/Ctrl marquee `pointerup` cleared the selection | `_suppressNextMapCanvasClick()` armed in marquee `onUp` (also for empty/cancelled marquees); canvas `click` calls `_consumeMapCanvasClickSuppression()` first. One-shot, 400 ms deadline, reset by the next `pointerdown` (macOS Control-click produces no trailing click) |
+| 2 | Multi menu kept stale names / stayed open | `_setMapSelection` calls `hideMapContextMenu()`; Escape hides the menu; menu actions re-read `_liveMapSelectionNames()` and bail if fewer than 2 remain |
+| 3 | `initOntologyMap` selection reset closed/saved the panel | `_clearMapSelection({ closePanel: false })` |
+| 4 | ~150 duplicated lines in Business View builders | `_createMapBusinessView(spec)` owns name uniqueness, layout, visibility, create/switch/save, navigation. `createBusinessViewFromEntity` (1-hop, centre + ring, same `Auto_<name>`) and `createBusinessViewFromSelection` (selected-only, `Auto_Selection`) only collect names/links and a `positionFor` callback. Generated payloads are unchanged |
+| 5 | No browser regression test | `tests/e2e/ontology/test_studio_multi_select_flows.py` (7 tests, Ctrl and Cmd variants) |
+| m1 | pointerup must cancel if modifier released | `onUp` returns without selecting if `!(evt.ctrlKey \|\| evt.metaKey)` or the marquee was cancelled mid-drag (mid-drag release keeps listening so the trailing click is still absorbed) |
+| m2 | pointercancel/blur cleanup | `pointercancel` + `blur` listeners → `cleanup()` (removes listeners + rect, never touches selection) |
+| m3 | Escape vs modal / inactive Studio | Ignored when `.modal.show` exists or `#map-section.active` is absent |
+| m4 | Dead marquee target check | Removed the unreachable `closest('.map-node, …')` line |
+| m5 | Multi-delete count | Notifies the actual removed class count (`removedCount`); 0 removed → warning, no save |
+| m6 | Docs | `docs/architecture.md` section (incl. macOS Ctrl-click and architecture notes) |
 
-## Commands and results
+Not touched: pre-existing mobile canvas collapse.
 
-- `uv run --frozen pytest -q tests/units/domain/test_version_capabilities.py tests/units/registry/test_version_lifecycle.py tests/units/registry/test_registry.py tests/units/registry/test_lakebase_guarded_version_delete.py tests/units/settings/test_settings_version_deletion.py tests/units/api/test_delete_version_endpoints.py tests/units/front/test_domain_versions_cards.py`
-  → 130 passed, 1 warning.
-- `ONTOBRICKS_E2E_FAKE_CREDS=1 uv run --frozen pytest -q tests/e2e/domain/test_domain_versions_cards.py`
-  → 7 passed, 1 warning.
-- `node --check` on all four changed JavaScript files → passed.
-- `uv run --frozen ruff check --select F,E9 ...` → all checks passed.
-  The repository-wide/default Ruff invocation reports 155 pre-existing
-  modernization/import findings in the already non-compliant large modules;
-  no IDE diagnostics were reported for changed files.
-- `git diff --check` → passed.
-- `uv run --frozen pytest -q -m "not scenario"` → 6950 passed,
-  315 skipped, 6 deselected, 1 xfailed, 32 warnings in 54.18s.
+## RED evidence (before the JS change)
 
-## Commit and self-review
+Unit contracts: `13 failed, 10 passed` (e.g. `test_canvas_click_honours_marquee_suppression`,
+`test_selection_change_closes_context_menu`, `test_map_rebuild_does_not_close_the_panel`,
+`test_business_view_builders_share_one_helper`, plus updated contracts for helper/removed-count).
 
-Commit: this report is part of the final-fix commit; its immutable SHA is
-reported in the final handoff because a commit cannot embed its own SHA.
+Playwright (`ONTOBRICKS_E2E_FAKE_CREDS=1`, server on :18765): `4 failed, 3 passed`
+- `test_modifier_marquee_keeps_selection_after_browser_click[cmd]` — `[] == ['Alpha','Beta','Gamma']`
+- `test_empty_modifier_marquee_leaves_selection_unchanged[cmd]` — selection wiped
+- `test_multi_menu_closes_when_modifier_toggle_changes_selection` — `#mapContextMenu` still present
+- `test_multi_menu_closes_on_escape_and_clears_selection` — `#mapContextMenu` still present
 
-Self-review found no unguarded deletion path in the changed flow. The SQL
-status predicate is authoritative because lifecycle transitions update the
-same denormalized `domain_versions.status` column. Knowledge Store cleanup
-remains after, and conditional on, successful row deletion. No user changes
-were overwritten, and `.superpowers/sdd/progress.md` was not edited.
+## GREEN evidence
 
-## Follow-up — remaining Important findings
+- `uv run --frozen pytest -q tests/units/front/test_ontology_map_multi_select.py` → **24 passed**
+- Playwright, spawned server on :18765: `ONTOBRICKS_E2E_FAKE_CREDS=1 uv run --frozen pytest tests/e2e/ontology/test_studio_multi_select_flows.py -q --no-cov` → **7 passed**
+- Same 7 tests against the running localhost dev app (`http://localhost:8000`, throw-away fresh browser context/session via a temp conftest in `/tmp/lh`) → **7 passed**
+- Full suite: `uv run --frozen pytest -q -m "not scenario"` → **7235 passed, 322 skipped, 6 deselected, 1 xfailed**
+- `node --check src/front/static/ontology/js/ontology-map.js` → OK
 
-### Persistent context-menu blocker
+## Self-review
 
-Confirmed: the capture listener was installed once and permanently prevented
-context menus even after `read-only-version` was removed. The listener remains
-deduplicated, but now checks the current `read-only-version` or `role-viewer`
-body class for every event. Inline Draft → In Review blocks context menus;
-inline In Review → Draft restores context menus and `canEditOntology()` without
-a reload.
+- Single-entity BV behaviour preserved (including the pre-existing self-loop quirk where the selected name can be duplicated in the entity list; payload shape unchanged). Multi BV still contains only selected names + internal links, with all others in `visibility.hidden*`.
+- `test_new_pointerdown_resets_leftover_click_suppression` was added after the matching code (the pointerdown reset was discovered while making the plain-click E2E green), so it has no separate RED run.
+- Suppression is time-boxed (400 ms) and reset by `pointerdown`; a user who plain-clicks within 400 ms *without* a new pointerdown cannot occur.
+- `_setMapSelection` always hides the menu, including when the right-click handler selects an unselected node — the menu is shown after the call, so this is safe.
 
-### Knowledge Store cleanup failures
+## Unresolved / caveats
 
-Confirmed: returned `delete_documents()` errors and raised exceptions were
-logged and swallowed. Cleanup now raises `InfrastructureError` with the
-truthful message that registry metadata was deleted but Knowledge Store cleanup
-failed. Both Domain and Settings routes propagate the shared 5xx error. The
-atomic Draft-guarded registry-row deletion still runs first; cleanup was not
-moved before it. Since the registry and cleanup APIs do not support one shared
-transaction, this can be a partial deletion. Version-status caches are cleared
-on this partial-failure path so the removed registry row is not presented as
-live.
+1. **Ctrl variants are not a true RED on macOS**: Chromium on macOS turns Control+left-click into a context-click with no trailing `click`, so the `[ctrl]` marquee tests pass even without the fix; the `[cmd]` variants (and Linux/Windows `[ctrl]`) are the real regression guards. The stale-menu contextmenu path is exercised through a synthetic `MouseEvent('contextmenu', {ctrlKey:true})`.
+2. **Default e2e credentials**: with no Databricks CLI profile the suite auto-skips; I ran it with the documented `ONTOBRICKS_E2E_FAKE_CREDS=1` hatch (these pages need no workspace calls).
+3. **Changelog not updated**: `.cursorrules` requires a changelog entry, but `changelogs/v0.9.0/benoitcayladbx_2026-10-01.log` is in the protected dirty set, so no entry was added. A follow-up should append a "Studio multi-select final-review fixes" section.
+4. `docs/features.md` / `docs/user-guide.md` (dirty, protected) were not touched, so they have no mention of the new Ctrl/Cmd+Esc behaviours beyond what already exists there.
+5. Mobile canvas collapse left as is, per instructions.
 
-### Follow-up RED/GREEN and verification
+## Unrelated dirty files — untouched (not modified, staged, or committed)
 
-- RED backend: 3 expected failures proved returned cleanup errors, raised
-  cleanup exceptions, and missing partial-failure cache invalidation.
-- RED browser: In Review → Draft left a synthetic OntoViz context menu blocked.
-- GREEN targeted backend/API/frontend: 135 passed, 1 warning.
-- GREEN mocked Chromium: 8 passed, 1 warning, including both lifecycle
-  directions through the real inline confirmation flow.
-- Node syntax checks: passed.
-- Ruff correctness checks and IDE diagnostics: passed for changed code. A
-  broader touched-module `F,E9` run surfaced three pre-existing findings in
-  `SettingsService.py` and `RegistryService.py`; none is in a changed hunk.
-- `git diff --check`: passed.
-- Full `uv run --frozen pytest -q -m "not scenario"`: 6955 passed,
-  316 skipped, 6 deselected, 1 xfailed, 32 warnings in 53.64s.
+Still showing as unstaged-modified exactly as before, none in the commit:
 
-Follow-up commit: reported in the final handoff; a commit cannot contain its
-own immutable SHA. Remaining concern: cross-store rollback remains unsupported,
-so cleanup failure is explicitly reported as partial deletion rather than
-atomic success.
+- `src/back/objects/mapping/Mapping.py`
+- `src/front/static/mapping/js/mapping-diagnostics.js`
+- `src/front/templates/partials/mapping/_mapping_diagnostics.html`
+- `tests/units/front/test_schema_drift_ui.py`
+- `tests/units/mapping/test_mapping_service.py`
+- `tests/units/mapping/test_schema_drift.py`
+- `docs/features.md`, `docs/user-guide.md`
+- `changelogs/v0.9.0/benoitcayladbx_2026-10-01.log`
 
-## Concrete-store cleanup follow-up
+`.superpowers/` (ignored plan) was not staged; `uv.lock` unchanged (`--frozen` used).
 
-### Verified gap and implementation contract
+---
 
-Confirmed: `LakebaseRegistryStore.list_documents()` returned `[]` when the
-document table could not be ensured or its query failed. The destructive
-workflow therefore could not distinguish infrastructure failure from a
-genuinely empty corpus.
+# Follow-up — Escape inside Bootstrap confirmation (commit `06f3969db2db9ff8fcce852c037ec6293ba99808`)
 
-`RegistryStore.list_documents()` now accepts the opt-in keyword
-`strict=False`. Existing API listing, parsing, generation, mapping, and agent
-tool callers retain tolerant behavior. `RegistryService.delete_version()` is
-the only strict caller. In strict mode, an unavailable document table or query
-failure raises `StoreError`; a successful query with no rows still returns
-`[]`. The service converts the raised failure into the existing truthful 5xx
-partial-deletion `InfrastructureError`.
+Files committed: `src/front/static/ontology/js/ontology-map.js`,
+`tests/units/front/test_ontology_map_multi_select.py`,
+`tests/e2e/ontology/test_studio_multi_select_flows.py`.
 
-The ordering is unchanged: the atomic Draft-guarded registry-row deletion
-still completes before strict Knowledge Store inspection. No unsupported
-cross-store transaction or rollback was introduced.
+## Changes
+- `handleMapSelectionKeyDown` now returns early when `event.target.closest('.modal')` or
+  `document.body.classList.contains('modal-open')` (the `.modal.show` probe is kept).
+  Bootstrap's element-level keydown handler dismisses the dialog and drops `.show`
+  before the document listener runs. Outside-Studio (`#map-section.active`) and normal
+  Studio Escape (clear multi-selection, close menu) behaviour unchanged.
+- `_createMapBusinessView` JSDoc: `positionFor` documented as
+  `function(number, number, number, number)` called as `(index, cx, cy, radius)`.
 
-### TDD and verification evidence
+## RED
+- Unit: `2 failed, 24 passed` (`test_escape_ignores_events_from_modal_even_after_show_class_removed`,
+  `test_business_view_position_callback_documents_all_arguments`).
+- Playwright `test_escape_in_delete_confirmation_keeps_selection`: `assert [] == ['Alpha','Beta','Gamma']`
+  (selection cleared by Escape in the delete dialog). First draft of the test passed
+  falsely because Escape was pressed before Bootstrap's fade-in finished and moved focus
+  into the dialog; the test now waits for focus inside `.modal`, presses Escape, and
+  waits for `.modal.show` to detach before asserting.
 
-- RED: the new focused run produced 5 expected failures and 1 pass. Lakebase
-  rejected the `strict` keyword, and the service still called tolerant
-  listing.
-- GREEN strict contract: 6 passed, 1 warning.
-- Focused store/service/Domain API/Settings API run: 77 passed, 1 warning.
-- New-test default Ruff run: passed.
-- Touched-file Ruff `F,E9`: one pre-existing unused import remains in
-  `RegistryService.py`; no changed hunk introduced it. IDE diagnostics found
-  no errors.
-- `git diff --check`: passed.
-- Full `uv run --frozen pytest -q -m "not scenario"`: 6959 passed,
-  316 skipped, 6 deselected, 1 xfailed, 32 warnings in 55.29s.
+## GREEN
+- Unit: `26 passed`.
+- Playwright (`ONTOBRICKS_E2E_FAKE_CREDS=1`, whole module): `10 passed`
+  (adds modal-Escape, normal-Studio-Escape-still-clears, outside-Studio-Escape-keeps-selection).
+- Full suite `uv run --frozen pytest -q -m "not scenario"`: `7237 passed, 325 skipped, 6 deselected, 1 xfailed`.
+- `node --check ontology-map.js`: OK.
 
-Concrete-store follow-up commit: reported in the final handoff because the
-commit cannot contain its own immutable SHA.
-
-### Self-review and remaining concern
-
-The concrete tests execute the Lakebase implementation against controlled
-table-availability and cursor outcomes, including a genuine zero-row query.
-All non-destructive callers keep the legacy tolerant contract. Existing docs
-already describe the correct partial-deletion boundary and were not
-strengthened.
-
-The unavoidable concern remains: metadata is already deleted when strict
-listing or Knowledge Store cleanup fails. The shared 5xx response reports that
-partial deletion truthfully, but cross-store rollback is unavailable.
+## Untouched
+`docs/features.md`, `docs/user-guide.md`, `changelogs/v0.9.0/benoitcayladbx_2026-10-01.log`,
+mapping diagnostics files and tests, and this report remain unstaged/uncommitted.
+Changelog entry still not added (protected file) — carry-over from the previous report.
