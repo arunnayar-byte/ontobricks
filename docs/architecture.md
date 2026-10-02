@@ -655,6 +655,16 @@ Regression coverage: `tests/units/front/test_ontology_map_multi_select.py`
 (source contracts) and `tests/e2e/ontology/test_studio_multi_select_flows.py`
 (real Playwright pointer input).
 
+### Inherited outgoing relations
+
+Object properties are not copied onto subclasses. `OntologyClassModel.outgoing_relations_for_class`
+and the JS helper `outgoingRelationsForClass` walk `parent` at read time and
+return own + inherited outgoing relations (`inherited`, `inheritedFrom` = the
+declaring ancestor). Studio and Mapping graphs draw dashed subclass→range
+edges; the entity panel lists them read-only. OWL export and R2RML keep a
+single `rdfs:domain` on the declaring class. Incoming (range) inheritance is
+out of scope.
+
 ### Page Structure
 
 Each main page (Ontology, Mapping, Knowledge Graph) follows this pattern:

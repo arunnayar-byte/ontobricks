@@ -340,6 +340,33 @@ async function initMappingDesigner() {
                 });
             }
         });
+
+        (classes || []).forEach(cls => {
+            const className = cls.name || cls.localName;
+            if (!className || typeof outgoingRelationsForClass !== 'function') return;
+            outgoingRelationsForClass(classes, properties, className).forEach(rel => {
+                if (!rel.inherited) return;
+                const srcId = resolveNodeId(className);
+                const tgtId = resolveNodeId(rel.range);
+                if (!srcId || !tgtId) return;
+                const isExcluded = !!rel.excluded
+                    || excludedEntityNames.has(rel.inheritedFrom)
+                    || excludedEntityNames.has(srcId)
+                    || excludedEntityNames.has(tgtId);
+                links.push({
+                    source: srcId,
+                    target: tgtId,
+                    name: rel.name || rel.localName,
+                    uri: rel.uri,
+                    type: 'relationship',
+                    direction: rel.direction || 'forward',
+                    mapped: mappedPropertyUris.has(rel.uri),
+                    excluded: isExcluded,
+                    inherited: true,
+                    inheritedFrom: rel.inheritedFrom || '',
+                });
+            });
+        });
         
         // Add inheritance links (only if parent exists as a node)
         classes.forEach(cls => {
@@ -563,7 +590,7 @@ async function initMappingDesigner() {
             .data(regularLinks.filter(l => l.type === 'relationship'))
             .enter()
             .append('path')
-            .attr('class', d => `mapping-map-link ${d.excluded ? 'excluded' : (d.mapped ? 'mapped' : 'unmapped')}${d.direction === 'reverse' ? ' reverse' : ''}`);
+            .attr('class', d => `mapping-map-link ${d.excluded ? 'excluded' : (d.mapped ? 'mapped' : 'unmapped')}${d.direction === 'reverse' ? ' reverse' : ''}${d.inherited ? ' inherited' : ''}`);
         
         // Draw inheritance links
         const inheritanceLinkElements = g.append('g')
@@ -580,8 +607,9 @@ async function initMappingDesigner() {
             .enter()
             .append('path')
             .attr('class', d => {
-                if (d.excluded) return 'mapping-map-link self-loop excluded';
-                return `mapping-map-link self-loop ${d.mapped ? 'mapped' : 'unmapped'}`;
+                const inherited = d.inherited ? ' inherited' : '';
+                if (d.excluded) return `mapping-map-link self-loop excluded${inherited}`;
+                return `mapping-map-link self-loop ${d.mapped ? 'mapped' : 'unmapped'}${inherited}`;
             })
             .attr('marker-end', d => {
                 if (d.excluded) return 'url(#mapping-arrow-excluded)';
@@ -938,6 +966,10 @@ async function initMappingDesigner() {
             <div class="mapping-map-legend-item">
                 <div class="mapping-map-legend-line inheritance"></div>
                 <span>Inheritance</span>
+            </div>
+            <div class="mapping-map-legend-item">
+                <div class="mapping-map-legend-line inherited"></div>
+                <span>Inherited relation</span>
             </div>
             <div class="mapping-map-legend-item">
                 <div class="mapping-map-legend-line excluded"></div>
@@ -1386,6 +1418,7 @@ function loadEntityPanelContent(classUri, className, targetPanelBody = null) {
                 <div class="small mb-2">
                     <span class="fw-semibold">${className}</span>
                     ${classInfo?.parent ? '<span class="text-muted ms-1">inherits <span class="fst-italic">' + classInfo.parent + '</span></span>' : ''}
+                    <div id="epInheritedRelations" class="mt-2"></div>
                     <a href="/ontology/?section=entities&select=${encodeURIComponent(className)}" class="ms-2 small" title="View ${className} in Ontology Editor"><i class="bi bi-box-arrow-up-right"></i> Ontology</a>
                     ${classInfo?.comment ? '<p class="text-muted mt-1 mb-0" style="font-size:0.78rem;">' + classInfo.comment + '</p>' : ''}
                 </div>
@@ -1502,6 +1535,30 @@ function loadEntityPanelContent(classUri, className, targetPanelBody = null) {
         </div>
     `;
     
+    const inhBox = document.getElementById('epInheritedRelations');
+    if (inhBox && typeof outgoingRelationsForClass === 'function') {
+        const ontoClasses = MappingState.loadedOntology?.classes || [];
+        const ontoProperties = MappingState.loadedOntology?.properties || [];
+        const inherited = outgoingRelationsForClass(ontoClasses, ontoProperties, className)
+            .filter(r => r.inherited);
+        const mappedUris = new Set((MappingState.config.relationships || []).map(m => m.property));
+        inhBox.innerHTML = inherited.length
+            ? `<div class="text-muted small fw-semibold mb-1">Inherited relations</div>` +
+              inherited.map(r => {
+                  const mapped = mappedUris.has(r.uri);
+                  const icon = mapped
+                      ? '<i class="bi bi-check-circle-fill text-success"></i>'
+                      : '<i class="bi bi-x-circle-fill text-danger"></i>';
+                  return `<button type="button" class="btn btn-link btn-sm py-0 px-0 d-block text-start"
+                      onclick="openRelationshipMappingFromDesign({ uri: ${JSON.stringify(r.uri)} })">
+                      ${icon}
+                      <span class="ms-1">${r.label || r.name}</span>
+                      <span class="text-muted"> via ${r.inheritedFrom}</span>
+                  </button>`;
+              }).join('')
+            : '';
+    }
+
     initEntityPanel(classUri, className, existingMapping, classInfo);
 }
 

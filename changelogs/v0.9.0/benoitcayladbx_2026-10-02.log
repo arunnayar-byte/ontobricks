@@ -1,0 +1,50 @@
+## Show inherited outgoing relations on subclasses
+
+Context: OWL already treats subclass instances as valid subjects of a parent
+object-property, but Studio, the entity panel, and Mapping only showed
+relations whose declared domain was the class itself. Subclasses now surface
+those outgoing relations at read time without duplicating OWL or mapping SQL.
+
+Changes:
+
+1. src/back/objects/ontology/OntologyClassModel.py
+   Add ancestor walk and `outgoing_relations_for_class`.
+2. tests/units/ontology/test_inherited_relations.py
+   Cover own vs inherited, multi-level, cycles, missing parent, no mutation.
+3. src/front/static/global/js/ontology-inheritance.js
+   Mirror the helper for Ontology and Mapping pages.
+4. src/front/templates/ontology.html / src/front/templates/mapping.html
+   Load the JS helper before the map scripts.
+5. src/front/static/ontology/js/ontology-map.js
+   Draw dashed inherited subclass-to-range edges and a legend item.
+6. src/front/static/ontology/css/ontology-map.css
+   Style `.map-link.inherited`.
+7. src/front/static/ontology/js/ontology-shared-panels.js
+   Read-only inherited-relations list on the entity Details tab.
+8. src/front/static/mapping/js/mapping-design.js
+   Inherited edges plus Status-tab links that open the declaring mapping.
+9. src/front/static/mapping/css/mapping-design.css
+   Style `.mapping-map-link.inherited`.
+10. tests/units/front/test_inherited_relations_ui.py
+    Source contracts for helper load order, graphs, and panels.
+11. docs/user-guide.md / docs/features.md / docs/architecture.md
+    Document dashed inherited edges and mapping reuse.
+
+Modified files:
+- src/back/objects/ontology/OntologyClassModel.py
+- tests/units/ontology/test_inherited_relations.py
+- src/front/static/global/js/ontology-inheritance.js
+- src/front/templates/ontology.html
+- src/front/templates/mapping.html
+- src/front/static/ontology/js/ontology-map.js
+- src/front/static/ontology/css/ontology-map.css
+- src/front/static/ontology/js/ontology-shared-panels.js
+- src/front/static/mapping/js/mapping-design.js
+- src/front/static/mapping/css/mapping-design.css
+- tests/units/front/test_inherited_relations_ui.py
+- docs/user-guide.md
+- docs/features.md
+- docs/architecture.md
+- changelogs/v0.9.0/benoitcayladbx_2026-10-02.log
+
+Tests: uv run --frozen pytest -q -m "not scenario" → 7256 passed, 326 skipped, 6 deselected, 1 xfailed, 32 warnings in 55.34s

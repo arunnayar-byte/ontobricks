@@ -469,6 +469,29 @@ async function initOntologyMap() {
         }
     });
     
+    classes.forEach(cls => {
+        const rels = (typeof outgoingRelationsForClass === 'function')
+            ? outgoingRelationsForClass(classes, properties, cls.name)
+            : [];
+        rels.forEach(rel => {
+            if (!rel.inherited) return;
+            if (PRIMITIVE_TYPES.has((rel.range || '').toLowerCase())) return;
+            const source = resolveNodeId(cls.name);
+            const target = resolveNodeId(rel.range);
+            if (!source || !target) return;
+            links.push({
+                source: source,
+                target: target,
+                name: rel.name,
+                label: rel.label || rel.name,
+                type: 'relationship',
+                direction: rel.direction || 'forward',
+                inherited: true,
+                inheritedFrom: rel.inheritedFrom || '',
+            });
+        });
+    });
+
     console.log(`[Map] Built ${links.length} valid links from ${properties.length} properties`);
 
     // Expose to module scope so context-menu handlers can access them
@@ -667,7 +690,7 @@ async function initOntologyMap() {
         .data(regularLinks.filter(l => l.type === 'relationship'))
         .enter()
         .append('path')
-        .attr('class', d => `map-link${d.direction === 'reverse' ? ' reverse' : ''}`);
+        .attr('class', d => `map-link${d.direction === 'reverse' ? ' reverse' : ''}${d.inherited ? ' inherited' : ''}`);
 
     // Draw inheritance links
     const inheritanceLinkElements = g.append('g')
@@ -683,7 +706,7 @@ async function initOntologyMap() {
         .data(selfLoopLinks)
         .enter()
         .append('path')
-        .attr('class', 'map-link self-loop');
+        .attr('class', d => `map-link self-loop${d.inherited ? ' inherited' : ''}`);
 
     // Draw clickable hitareas at link midpoints (for relationships only)
     const linkHitareas = g.append('g')
@@ -1268,6 +1291,10 @@ async function initOntologyMap() {
         <div class="map-legend-item">
             <div class="map-legend-line"></div>
             <span>Relationship</span>
+        </div>
+        <div class="map-legend-item">
+            <div class="map-legend-line inherited"></div>
+            <span>Inherited relation</span>
         </div>
         <div class="map-legend-item">
             <div class="map-legend-line inheritance"></div>

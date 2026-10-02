@@ -643,6 +643,7 @@ async function renderEntityForm(panel, cls, viewOnly = false) {
                         ${parentOptions}
                     </select>
                 </div>
+                <div class="mb-3 p-2 bg-light rounded border" id="sharedEntityInheritedRelations"></div>
                 <div class="mb-3 p-2 bg-light rounded border">
                     <label for="sharedEntityGroup" class="form-label"><i class="bi bi-collection"></i> Group</label>
                     <select class="form-select form-select-sm" id="sharedEntityGroup" ${disabled}
@@ -809,6 +810,7 @@ async function renderEntityForm(panel, cls, viewOnly = false) {
     if (cls?.name) {
         _renderAssignmentLink('sharedEntityAssignmentLink', 'entity', cls.name);
     }
+    renderSharedInheritedRelations(cls);
 }
 
 function renderSharedEntityAttributes(viewOnly = false) {
@@ -904,10 +906,51 @@ function removeSharedEntityAttribute(idx) {
     renderSharedEntityAttributes(false);
 }
 
+function renderSharedInheritedRelations(cls) {
+    const box = panelGetById('sharedEntityInheritedRelations');
+    if (!box) return;
+    if (!cls || !cls.name || typeof outgoingRelationsForClass !== 'function') {
+        box.innerHTML = '';
+        box.style.display = 'none';
+        return;
+    }
+    const classes = (OntologyState.config.classes || []).map(c =>
+        c.name === cls.name ? { ...c, parent: cls.parent } : c
+    );
+    const inherited = outgoingRelationsForClass(
+        classes,
+        OntologyState.config.properties || [],
+        cls.name
+    ).filter(r => r.inherited);
+    if (!inherited.length) {
+        box.innerHTML = '';
+        box.style.display = 'none';
+        return;
+    }
+    box.style.display = '';
+    box.innerHTML = `
+        <div class="small fw-semibold mb-1"><i class="bi bi-diagram-2"></i> Inherited relations</div>
+        ${inherited.map(r => {
+            const label = r.label || r.name;
+            const from = r.inheritedFrom || '';
+            const range = r.range || '';
+            return `<button type="button" class="btn btn-link btn-sm py-0 px-0 d-block text-start"
+                onclick="editPropertyByName(${JSON.stringify(r.name)})">
+                <span>${label}</span>
+                <span class="text-muted"> → ${range}</span>
+                <span class="badge bg-secondary ms-1" style="font-size:0.6rem;">inherited from ${from}</span>
+            </button>`;
+        }).join('')}
+    `;
+}
+
 function onSharedEntityParentChange() {
     const parentName = panelGetById('sharedEntityParent')?.value;
     sharedPanelInheritedAttributes = getSharedInheritedProperties(parentName);
     renderSharedEntityAttributes(false);
+    const cls = OntologyState.config.classes[sharedPanelEditIndex];
+    const name = cls?.name || panelGetById('sharedEntityName')?.value;
+    renderSharedInheritedRelations({ ...(cls || {}), name, parent: parentName });
 }
 
 function onSharedEntityGroupChange(entityName, newGroup, previousGroup) {

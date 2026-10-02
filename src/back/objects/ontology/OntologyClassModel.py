@@ -147,6 +147,70 @@ class OntologyClassModel:
         if classes:
             OntologyParser._propagate_inherited_properties(classes)
 
+    _PRIMITIVE_RANGES = frozenset({
+        "string", "integer", "int", "long", "float", "double", "decimal",
+        "boolean", "date", "datetime", "time", "duration",
+        "anyuri", "literal", "plainliteral", "langstring",
+        "xsd:string", "xsd:integer", "xsd:int", "xsd:long", "xsd:float",
+        "xsd:double", "xsd:decimal", "xsd:boolean", "xsd:date",
+        "xsd:datetime", "xsd:time", "xsd:duration", "xsd:anyuri",
+        "rdfs:literal",
+    })
+
+    @staticmethod
+    def ancestor_names(classes: List[Dict[str, Any]], class_name: str) -> List[str]:
+        """Nearest-first parent chain, excluding *class_name*. Cycles stop."""
+        by_name = {c.get("name"): c for c in classes if c.get("name")}
+        chain: List[str] = []
+        visited = {class_name}
+        current = by_name.get(class_name)
+        while current:
+            parent = current.get("parent") or ""
+            if not parent or parent in visited:
+                break
+            visited.add(parent)
+            chain.append(parent)
+            current = by_name.get(parent)
+        return chain
+
+    @staticmethod
+    def _is_object_property(prop: Dict[str, Any]) -> bool:
+        ptype = (prop.get("type") or "").replace("owl:", "")
+        if ptype == "DatatypeProperty":
+            return False
+        if ptype in ("ObjectProperty",):
+            return True
+        range_val = (prop.get("range") or "").lower()
+        return range_val not in OntologyClassModel._PRIMITIVE_RANGES
+
+    @staticmethod
+    def outgoing_relations_for_class(
+        config: Dict[str, Any], class_name: str
+    ) -> List[Dict[str, Any]]:
+        """Own + inherited outgoing object properties for *class_name*.
+
+        Does not mutate ``config``. Inherited copies set ``inherited`` /
+        ``inheritedFrom`` (declaring ancestor name).
+        """
+        classes = config.get("classes") or []
+        properties = config.get("properties") or []
+        declaring = {class_name, *OntologyClassModel.ancestor_names(classes, class_name)}
+        out: List[Dict[str, Any]] = []
+        for prop in properties:
+            domain = prop.get("domain") or ""
+            if domain not in declaring:
+                continue
+            if not OntologyClassModel._is_object_property(prop):
+                continue
+            if not prop.get("range"):
+                continue
+            row = dict(prop)
+            inherited = domain != class_name
+            row["inherited"] = inherited
+            row["inheritedFrom"] = domain if inherited else ""
+            out.append(row)
+        return out
+
     @staticmethod
     def normalize_property_domain_range(
         ontology_config: Dict[str, Any],

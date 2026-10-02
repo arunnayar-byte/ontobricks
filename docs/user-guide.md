@@ -181,6 +181,10 @@ All changes in the Design view are automatically saved. You'll see a brief "Savi
 
 Open **Ontology → Studio** for the force-directed map of every class. This is the full-ontology map, not a single Business View canvas.
 
+**Inherited relations**
+
+If `Employé` inherits from `Personne` and `Personne` has `habiteÀ → Ville`, Studio and Mapping draw a dashed `Employé → Ville` edge. The entity panel lists it as inherited from `Personne` (read-only). Mapping reuses `Personne`’s `habiteÀ` mapping — there is no second SQL on `Employé`. OWL export still declares `rdfs:domain Personne` and `Employé rdfs:subClassOf Personne`.
+
 **Select**
 
 1. Click an entity to select only that entity and open its detail panel (1-hop neighbourhood highlight stays as today).
